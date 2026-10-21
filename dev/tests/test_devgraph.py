@@ -7,7 +7,8 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 
-from devgraph import affinity_clusters, critical_path, jaccard_distance, path_ahead, task_cost, validate  # noqa: E402
+from devgraph import (affinity_clusters, critical_path, jaccard_distance, next_assignments,  # noqa: E402
+                      path_ahead, task_cost, validate)
 
 
 def load_fixture(name):
@@ -105,6 +106,83 @@ class AffinityTest(unittest.TestCase):
         plan["tasks"][0].update(repo="a", files_hint=["x.ts"])
         plan["tasks"][1].update(repo="b", files_hint=["x.ts"])
         self.assertEqual(len(affinity_clusters(plan)), 2)
+
+
+def free_worker(state, slot=1):
+    state["workers"][slot - 1]["assignment"] = None
+
+
+def set_task(state, tid, status, steps=(1, 2, 3, 4, 5)):
+    state["tasks"][tid].update(status=status, steps_done=list(steps), step_running=None)
+
+
+class SchedulerTest(unittest.TestCase):
+    def setUp(self):
+        self.plan = load_fixture("plan-lembrete.json")
+        self.state = load_fixture("state-mockup.json")
+
+    def fresh_state(self):
+        state = copy.deepcopy(self.state)
+        for tid in state["tasks"]:
+            set_task(state, tid, "pending", ())
+        for w in state["workers"]:
+            w["assignment"] = None
+        return state
+
+    def test_mockup_moment_fills_with_pre_reads(self):
+        self.assertEqual(next_assignments(self.plan, self.state, 3),
+                         [{"kind": "pre_read", "task": "T5", "steps": [1, 2]},
+                          {"kind": "pre_read", "task": "T6", "steps": [1, 2]},
+                          {"kind": "pre_read", "task": "T7", "steps": [1, 2]}])
+
+    def test_cluster_batch_when_last_task_implemented(self):
+        state = copy.deepcopy(self.state)
+        free_worker(state)
+        set_task(state, "T3", "implemented")
+        self.assertEqual(next_assignments(self.plan, state, 1),
+                         [{"kind": "review_lean", "tasks": ["T2", "T3"], "roast": False}])
+
+    def test_high_risk_reviewed_alone(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "implemented")
+        self.assertIn({"kind": "review_lean", "tasks": ["T1"], "roast": True}, next_assignments(self.plan, state, 4))
+
+    def test_no_stacking_on_high_risk(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "implemented")
+        kinds = [(a["kind"], a.get("task")) for a in next_assignments(self.plan, state, 4)]
+        self.assertNotIn(("task", "T2"), kinds)
+
+    def test_early_review_when_dependent_waits(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "done")
+        set_task(state, "T4", "done")
+        set_task(state, "T3", "implemented")
+        state["tasks"]["T2"].update(steps_done=[1, 2], step_running=3)
+        self.assertIn({"kind": "review_lean", "tasks": ["T3"], "roast": False}, next_assignments(self.plan, state, 4))
+
+    def test_gate_ready(self):
+        state = self.fresh_state()
+        for tid in ("T1", "T2", "T3", "T4", "T5"):
+            set_task(state, tid, "done")
+        self.assertIn({"kind": "gate", "gate": "G1"}, next_assignments(self.plan, state, 4))
+
+    def test_stack_inside_cluster(self):
+        plan = copy.deepcopy(self.plan)
+        plan["tasks"][0]["risk"] = 3
+        state = self.fresh_state()
+        set_task(state, "T1", "implemented")
+        self.assertIn({"kind": "task", "task": "T2", "from_step": 1, "stack_on": "T1"},
+                      next_assignments(plan, state, 4))
+
+    def test_priority_by_path_ahead(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "done")
+        tasks = [a["task"] for a in next_assignments(self.plan, state, 4) if a["kind"] == "task"]
+        self.assertLess(tasks.index("T3"), tasks.index("T2"))
+
+    def test_no_slots(self):
+        self.assertEqual(next_assignments(self.plan, self.state, 0), [])
 
 
 if __name__ == "__main__":

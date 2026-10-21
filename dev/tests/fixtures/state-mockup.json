@@ -1,0 +1,174 @@
+{
+ "feature": "lembrete-aula",
+ "phase": "execution",
+ "repos": {
+  "api-bff": {
+   "path": "/tmp/api-bff",
+   "feature_branch": "feat/lembrete-aula",
+   "base": "main"
+  },
+  "web-app": {
+   "path": "/tmp/web-app",
+   "feature_branch": "feat/lembrete-aula",
+   "base": "main"
+  }
+ },
+ "tasks": {
+  "T1": {
+   "status": "done",
+   "steps_done": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T2": {
+   "status": "implemented",
+   "steps_done": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T3": {
+   "status": "pending",
+   "steps_done": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "step_running": 5,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T4": {
+   "status": "implemented",
+   "steps_done": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T5": {
+   "status": "pending",
+   "steps_done": [],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T6": {
+   "status": "pending",
+   "steps_done": [],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T7": {
+   "status": "pending",
+   "steps_done": [],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  },
+  "T8": {
+   "status": "pending",
+   "steps_done": [],
+   "step_running": null,
+   "branch": null,
+   "worktree": null,
+   "stack_on": null,
+   "block_reason": null,
+   "outputs": {}
+  }
+ },
+ "gates": {
+  "G1": {
+   "status": "pending",
+   "report": null
+  },
+  "G2": {
+   "status": "pending",
+   "report": null
+  }
+ },
+ "workers": [
+  {
+   "slot": 1,
+   "assignment": {
+    "kind": "task",
+    "task": "T3",
+    "from_step": 5,
+    "stack_on": null
+   },
+   "started_at": "2026-10-21T14:20:00"
+  },
+  {
+   "slot": 2,
+   "assignment": null,
+   "started_at": null
+  },
+  {
+   "slot": 3,
+   "assignment": null,
+   "started_at": null
+  },
+  {
+   "slot": 4,
+   "assignment": null,
+   "started_at": null
+  }
+ ],
+ "reviews": [
+  {
+   "id": "R1",
+   "kind": "lean",
+   "tasks": [
+    "T1"
+   ],
+   "report": "reviews/R1.md",
+   "tokens": 58000
+  }
+ ],
+ "checkpoint": {
+  "at": "2026-10-21T14:32:00",
+  "note": "T3 passo 4 concluído"
+ },
+ "paused": null
+}

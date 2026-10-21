@@ -204,6 +204,122 @@ def analyze(plan):
     return plan
 
 
+HIGH_RISK = 4
+
+
+def required_steps(task):
+    return [1, 2, 3, 5] if not task.get("changes_behavior", True) else [1, 2, 3, 4, 5]
+
+
+def _in_flight(state):
+    busy_tasks, busy_gates = set(), set()
+    for w in state.get("workers", []):
+        a = w.get("assignment") or {}
+        if a.get("task"):
+            busy_tasks.add(a["task"])
+        busy_tasks.update(a.get("tasks", []))
+        if a.get("gate"):
+            busy_gates.add(a["gate"])
+    for tid, ts in state.get("tasks", {}).items():
+        if ts.get("step_running") is not None:
+            busy_tasks.add(tid)
+    for gid, gs in state.get("gates", {}).items():
+        if gs.get("status") == "running":
+            busy_gates.add(gid)
+    return busy_tasks, busy_gates
+
+
+def next_assignments(plan, state, free_slots):
+    if free_slots <= 0:
+        return []
+    tasks, gates = _tasks(plan), _gates(plan)
+    analysis = plan.get("analysis") or {}
+    ahead = analysis.get("path_ahead") or path_ahead(plan)
+    cluster_of = analysis.get("task_cluster") or {
+        tid: label for label, members in affinity_clusters(plan).items() for tid in members}
+    tstate, gstate = state.get("tasks", {}), state.get("gates", {})
+    busy_tasks, busy_gates = _in_flight(state)
+
+    def status(tid):
+        return tstate.get(tid, {}).get("status", "pending")
+
+    def high_risk(tid):
+        return tasks[tid]["risk"] >= HIGH_RISK
+
+    def dep_ok(dep, tid):
+        if dep in gates:
+            return gstate.get(dep, {}).get("status") == "passed"
+        if status(dep) == "done":
+            return True
+        return (status(dep) == "implemented" and cluster_of.get(dep) == cluster_of.get(tid)
+                and not high_risk(dep) and dep not in busy_tasks)
+
+    def stack_on(tid):
+        stacked = [d for d in tasks[tid].get("depends_on", []) if d in tasks and status(d) == "implemented"]
+        return stacked[-1] if stacked else None
+
+    pending = [tid for tid in tasks if status(tid) == "pending" and tid not in busy_tasks]
+    by_priority = sorted(pending, key=lambda tid: (-ahead.get(tid, 0), tid))
+    ready = [tid for tid in by_priority if all(dep_ok(d, tid) for d in tasks[tid].get("depends_on", []))]
+    out = []
+    for tid in ready:
+        done = set(tstate.get(tid, {}).get("steps_done", []))
+        steps = [n for n in required_steps(tasks[tid]) if n not in done]
+        out.append({"kind": "task", "task": tid, "from_step": steps[0] if steps else 5, "stack_on": stack_on(tid)})
+
+    implemented = [tid for tid in tasks if status(tid) == "implemented" and tid not in busy_tasks]
+    batches = []
+
+    def add_batch(members):
+        if members and members not in batches:
+            batches.append(members)
+
+    def cluster_batch(tid):
+        label = cluster_of.get(tid)
+        return [m for m in implemented if cluster_of.get(m) == label and not high_risk(m)]
+
+    for tid in implemented:
+        if high_risk(tid):
+            add_batch([tid])
+            continue
+        members = [m for m in tasks if cluster_of.get(m) == cluster_of.get(tid)]
+        if all(status(m) in ("implemented", "done") for m in members):
+            add_batch(cluster_batch(tid))
+            continue
+        # review antecipada: alguém fora do cluster só espera por esta task
+        for waiter, node in [(n, tasks.get(n) or gates.get(n)) for n in _dependents(plan).get(tid, [])]:
+            if waiter in tasks and (cluster_of.get(waiter) == cluster_of.get(tid) or status(waiter) != "pending"):
+                continue
+            if waiter in gates and gstate.get(waiter, {}).get("status") != "pending":
+                continue
+            others = [d for d in (node.get("depends_on") or node.get("waits_for") or []) if d != tid]
+            if all((status(d) == "done") if d in tasks else gstate.get(d, {}).get("status") == "passed"
+                   for d in others):
+                add_batch(cluster_batch(tid))
+                break
+    for members in batches:
+        out.append({"kind": "review_lean", "tasks": members, "roast": any(high_risk(m) for m in members)})
+
+    for gid, g in gates.items():
+        if gstate.get(gid, {}).get("status", "pending") == "pending" and gid not in busy_gates \
+                and all(status(t) == "done" for t in g.get("waits_for", []) if t in tasks) \
+                and all(gstate.get(x, {}).get("status") == "passed" for x in g.get("waits_for", []) if x in gates):
+            out.append({"kind": "gate", "gate": gid})
+
+    busy_files = set()
+    for tid in busy_tasks:
+        if tid in tasks:
+            busy_files |= set(tasks[tid].get("files_hint", []))
+    for tid in by_priority:
+        if tid in ready:
+            continue
+        done = set(tstate.get(tid, {}).get("steps_done", []))
+        steps = [n for n in (1, 2) if n not in done]
+        if steps and not (set(tasks[tid].get("files_hint", [])) & busy_files):
+            out.append({"kind": "pre_read", "task": tid, "steps": steps})
+    return out[:free_slots]
+
+
 def _write_json(path, data):
     try:
         from devstate import atomic_write_json
@@ -233,6 +349,12 @@ def main(argv):
             return 1
         _write_json(plan_path, analyze(plan))
         print(json.dumps(plan["analysis"], ensure_ascii=False))
+        return 0
+    if cmd == "next":
+        with open(argv[3]) as f:
+            state = json.load(f)
+        free = int(argv[argv.index("--free") + 1]) if "--free" in argv else 1
+        print(json.dumps(next_assignments(plan, state, free), ensure_ascii=False))
         return 0
     print(f"comando desconhecido: {cmd}", file=sys.stderr)
     return 2
