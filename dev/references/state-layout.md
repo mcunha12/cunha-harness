@@ -81,6 +81,7 @@ devstate.py step-done <dir> <task> <step> [output]
 devstate.py task-status <dir> <task> <pending|implemented|done|blocked> [motivo]
 devstate.py gate-status <dir> <gate> <pending|running|passed|blocked> [relatório]
 devstate.py worker <dir> <slot> '<assignment json>' | null
+devstate.py reset-steps <dir> <task> <from_step>
 devstate.py phase <dir> <requirements|planning|execution|done>
 devstate.py pause <dir> <motivo> | resume <dir>
 devstate.py decision <dir> '<json>' | cost <dir> '<json>'

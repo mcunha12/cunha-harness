@@ -61,6 +61,16 @@ class DevstateTest(unittest.TestCase):
         self.assertIsNone(s["tasks"]["T3"]["step_running"])
         self.assertTrue(all(w["assignment"] is None for w in s["workers"]))
 
+    def test_reset_steps_drops_steps_from_n_and_reopens_task(self):
+        s = self.state
+        for step in (1, 2, 3, 4, 5):
+            s = devstate.step_done(s, "T3", step, f"s{step}")
+        s = devstate.set_task_status(s, "T3", "done")
+        s = devstate.reset_steps(s, "T3", 2)
+        self.assertEqual(s["tasks"]["T3"]["steps_done"], [1])
+        self.assertEqual(s["tasks"]["T3"]["status"], "pending")
+        self.assertNotIn("2", s["tasks"]["T3"]["outputs"])
+
     def test_stale_files(self):
         with open(os.path.join(self.tmp, "a.txt"), "w") as f:
             f.write("1")

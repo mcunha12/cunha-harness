@@ -7,13 +7,11 @@ if [ ! -f "$TERMS" ]; then
   exit 2
 fi
 if [ "$#" -gt 0 ]; then
-  files=("$@")
+  hits=$(grep -n -i -o -E -f "$TERMS" -- "$@" /dev/null 2>/dev/null)
 else
-  files=()
-  while IFS= read -r f; do [ -f "$f" ] && files+=("$f"); done < <(git diff --cached --name-only --diff-filter=ACMR)
+  # sem argumento confere o conteúdo staged, que é o que entra no commit
+  hits=$(git grep --cached -n -i -o -E -f "$TERMS" 2>/dev/null)
 fi
-[ "${#files[@]}" -eq 0 ] && exit 0
-hits=$(grep -n -i -o -E -f "$TERMS" -- "${files[@]}" /dev/null 2>/dev/null)
 if [ -n "$hits" ]; then
   echo "$hits"
   echo "termo proibido encontrado" >&2

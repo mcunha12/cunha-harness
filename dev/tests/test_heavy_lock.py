@@ -44,5 +44,18 @@ class HeavyLockTest(unittest.TestCase):
         self.assertLess(time.time() - start, 5)
 
 
+class OrphanSlotTest(HeavyLockTest):
+    def test_reclaims_old_slot_without_pid_file(self):
+        old = time.time() - 60
+        for i in (1, 2):
+            slot = os.path.join(self.env["DEV_HEAVY_DIR"], f"slot-{i}")
+            os.makedirs(slot)
+            os.utime(slot, (old, old))
+        start = time.time()
+        result = subprocess.run(["bash", LOCK, "true"], env=self.env, timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertLess(time.time() - start, 5)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -12,11 +12,17 @@ trap 'exit 130' INT TERM
 while [ -z "$held" ]; do
   for i in $(seq 1 "$SLOTS"); do
     slot="$DIR/slot-$i"
-    if [ -f "$slot/pid" ] && ! kill -0 "$(cat "$slot/pid" 2>/dev/null)" 2>/dev/null; then
-      rm -rf "$slot"
+    if [ -d "$slot" ]; then
+      if [ -f "$slot/pid" ]; then
+        kill -0 "$(cat "$slot/pid" 2>/dev/null)" 2>/dev/null || rm -rf "$slot"
+      else
+        # slot sem pid há mais de 10 s é órfão de um kill entre mkdir e a escrita do pid
+        mtime=$(stat -f %m "$slot" 2>/dev/null || stat -c %Y "$slot" 2>/dev/null || echo 0)
+        [ $(( $(date +%s) - mtime )) -gt 10 ] && rm -rf "$slot"
+      fi
     fi
     if mkdir "$slot" 2>/dev/null; then
-      echo $$ > "$slot/pid"
+      echo $$ > "$slot/pid.tmp" && mv "$slot/pid.tmp" "$slot/pid"
       held="$slot"
       break
     fi

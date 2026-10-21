@@ -93,6 +93,15 @@ def set_task_status(state, task, status, reason=None):
     return _checkpoint(s, f"{task} {status}" + (f": {reason}" if reason else ""))
 
 
+def reset_steps(state, task, from_step):
+    s = copy.deepcopy(state)
+    ts = s["tasks"].setdefault(task, new_task_state())
+    ts["steps_done"] = [n for n in ts["steps_done"] if n < from_step]
+    ts["outputs"] = {k: v for k, v in ts["outputs"].items() if int(k) < from_step}
+    ts["status"], ts["step_running"], ts["block_reason"] = "pending", None, None
+    return _checkpoint(s, f"{task} reaberta a partir do passo {from_step}")
+
+
 def set_gate_status(state, gate, status, report=None):
     s = copy.deepcopy(state)
     s["gates"][gate] = {"status": status, "report": report}
@@ -177,6 +186,7 @@ USAGE = """uso: devstate.py <op> <feature_dir> ...
   task-status <dir> <task> <status> [reason]
   gate-status <dir> <gate> <status> [report]
   worker <dir> <slot> <assignment-json|null>
+  reset-steps <dir> <task> <from_step>
   phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
   decision <dir> <json> | cost <dir> <json>
@@ -215,6 +225,8 @@ def main(argv):
         state = set_gate_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
     elif op == "worker":
         state = set_worker(state, int(args[0]), json.loads(args[1]))
+    elif op == "reset-steps":
+        state = reset_steps(state, args[0], int(args[1]))
     elif op == "phase":
         state = set_phase(state, args[0])
     elif op == "pause":

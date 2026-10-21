@@ -31,6 +31,19 @@ class CheckAnonymizedTest(unittest.TestCase):
         result = self.run_guard("repo web-app\n")
         self.assertEqual(result.returncode, 0)
 
+    def test_guard_checks_staged_content_not_working_tree(self):
+        repo = os.path.join(self.tmp, "repo")
+        subprocess.run(["git", "init", "-q", repo], check=True)
+        target = os.path.join(repo, "a.md")
+        with open(target, "w") as f:
+            f.write("repo acmecorp-web\n")
+        subprocess.run(["git", "-C", repo, "add", "a.md"], check=True)
+        with open(target, "w") as f:
+            f.write("repo web-app\n")
+        env = dict(os.environ, FORBIDDEN_TERMS=self.terms)
+        result = subprocess.run(["bash", GUARD], cwd=repo, capture_output=True, text=True, env=env)
+        self.assertEqual(result.returncode, 1)
+
     def test_guard_fails_closed_without_terms_file(self):
         result = self.run_guard("repo web-app\n", terms=os.path.join(self.tmp, "missing.txt"))
         self.assertEqual(result.returncode, 2)
