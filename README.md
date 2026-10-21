@@ -29,10 +29,6 @@ O `install.sh` nunca apaga. Pasta existente em `~/.claude/skills/` vai para `~/.
 
 ## Regra do repo
 
-O repo é público. Nenhum arquivo contém termo de `~/.claude/overlays/forbidden-terms.txt`. O pre-commit hook roda `scripts/check-anonymized.sh`:
-
-```bash
-printf '#!/usr/bin/env bash\nexec scripts/check-anonymized.sh\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
-```
+O repo é público. Nenhum arquivo, nome de arquivo ou mensagem de commit contém termo de `~/.claude/overlays/forbidden-terms.txt`. Os hooks versionados em `.githooks/` (pre-commit e commit-msg) rodam `scripts/check-anonymized.sh`. O `./install.sh` liga esses hooks na clone (`core.hooksPath`).
 
 Testes: `python3 -m unittest <arquivo de teste>`.

@@ -167,7 +167,19 @@ def shoot(page, out, name, full=False):
 
 
 def run_step(page, out, step):
+    try:
+        return _run_step(page, out, step)
+    except Exception as exc:  # passo quebrado vira ok false e o fluxo segue
+        return {**step, "ok": False, "error": str(exc)}
+
+
+def _run_step(page, out, step):
     sel = json.dumps
+    for key in ("click", "text"):
+        if key in step and not page.evaluate(f"!!document.querySelector({sel(step[key])})"):
+            return {**step, "ok": False, "error": "seletor não encontrado"}
+    if "type" in step and not page.evaluate(f"!!document.querySelector({sel(step['type'][0])})"):
+        return {**step, "ok": False, "error": "seletor não encontrado"}
     if "click" in step:
         page.evaluate(f"document.querySelector({sel(step['click'])}).click()")
         time.sleep(0.3)

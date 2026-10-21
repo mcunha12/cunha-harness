@@ -46,6 +46,14 @@ class MobileFlowTest(unittest.TestCase):
         self.assertEqual(report["steps"][1]["value"], "clicado")
         self.assertTrue(os.path.exists(os.path.join(self.out, "depois.png")))
 
+    def test_missing_selector_marks_step_and_keeps_report(self):
+        steps = os.path.join(self.out, "steps.json")
+        with open(steps, "w") as f:
+            json.dump([{"click": "#nao-existe"}, {"shot": "depois"}], f)
+        report = run_flow(self.out, "--device", "iphone-se", "--steps", steps)
+        self.assertFalse(report["steps"][0]["ok"])
+        self.assertTrue(report["steps"][1]["ok"])
+
     def test_desktop(self):
         report = run_flow(self.out, "--device", "desktop")
         self.assertEqual(report["viewport"]["width"], 1440)

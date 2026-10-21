@@ -30,8 +30,14 @@ def identity(agent, category):
 def _read(path):
     if not os.path.exists(path):
         return []
+    rows = []
     with open(path) as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue  # linha corrompida (escrita interrompida) não derruba o ledger
+    return rows
 
 
 def _append(path, record):

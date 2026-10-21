@@ -5,7 +5,7 @@
 1. Leia `state.json` da feature ativa.
 2. Para cada worker ocupado:
    - passo 1, 2, 3, review ou gate (só leem): pare o agente (TaskStop). O passo recomeça na retomada.
-   - passo 4 ou 5 (editam código): pare o agente e, na worktree da task, `git add -A && git commit -m "wip: <task> passo <n>"`. Depois `git worktree remove <worktree>`. A branch da task fica.
+   - passo 4 ou 5 (editam código): pare o agente e, na worktree da task, `git add -u` e `git add -- <arquivos novos listados no plan.md da task>`, depois `git commit -m "wip: <task> passo <n>"`. Nunca `git add -A`: prints, `.env` e relatórios não rastreados ficam fora do commit. Depois `git worktree remove <worktree>`. A branch da task fica.
 3. `devstate.py worker <dir> <slot> null` para cada slot e `devstate.py pause <dir> "<motivo>"`.
 4. Diga ao Marcelo onde a feature parou (o `checkpoint` do estado) e o comando para retomar.
 

@@ -56,6 +56,46 @@ class RenderTrackerTest(unittest.TestCase):
         self.assertIn("T2 aguarda o cluster A.", html)
         self.assertLess(html.index("Situação agora"), html.index("Workers agora"))
 
+    def test_corrupted_ledger_line_does_not_break_render(self):
+        tmp = tempfile.mkdtemp()
+        home = os.path.join(tmp, "cg")
+        os.makedirs(home)
+        with open(os.path.join(home, "ledger.jsonl"), "w") as f:
+            f.write('{"feature": "lembrete-aula", "identity": "a:b", "task": "T1", "problem": "p"}\n{"truncad')
+        for name, data in (("plan.json", self.plan), ("state.json", self.state)):
+            with open(os.path.join(tmp, name), "w") as f:
+                json.dump(data, f)
+        os.environ["CODE_GUARD_HOME"] = home
+        try:
+            with open(render_dir(tmp)) as f:
+                self.assertIn("a:b", f.read())
+        finally:
+            del os.environ["CODE_GUARD_HOME"]
+
+    def test_heavy_kpi_uses_configured_slots_and_live_pids(self):
+        tmp = tempfile.mkdtemp()
+        for i, pid in ((1, os.getpid()), (2, 999999)):
+            os.makedirs(os.path.join(tmp, f"slot-{i}"))
+            with open(os.path.join(tmp, f"slot-{i}", "pid"), "w") as f:
+                f.write(str(pid))
+        os.environ.update(DEV_HEAVY_DIR=tmp, DEV_HEAVY_SLOTS="3")
+        try:
+            from render_tracker import heavy_status
+            self.assertEqual(heavy_status(), (1, 3))
+        finally:
+            del os.environ["DEV_HEAVY_DIR"], os.environ["DEV_HEAVY_SLOTS"]
+
+    @unittest.skipUnless(os.path.exists("/usr/bin/python3"), "sem python do sistema")
+    def test_scripts_compile_on_system_python(self):
+        scripts = [os.path.join(ROOT, d, "scripts", n) for d, n in (
+            ("dev", "devgraph.py"), ("dev", "devstate.py"), ("dev", "render_tracker.py"),
+            ("master-review", "mobile_flow.py"), ("code-guard", "ledger.py"),
+            ("code-guard", "check_budget.py"), ("code-guard", "overlay.py"))]
+        result = subprocess.run(["/usr/bin/python3", "-c",
+                                 "import ast,sys\nfor p in sys.argv[1:]: ast.parse(open(p).read(), p)", *scripts],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_render_dir_writes_file(self):
         tmp = tempfile.mkdtemp()
         with open(os.path.join(tmp, "plan.json"), "w") as f:

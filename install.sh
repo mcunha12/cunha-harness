@@ -21,11 +21,17 @@ for dir in "$REPO_DIR"/*/; do
     if [ "$DRY" -eq 0 ]; then
       [ -d "$target" ] && [ ! -L "$target" ] && diff -rq "$target" "$dir" | head -10 || true
       mkdir -p "$BACKUP_DIR"
-      mv "$target" "$BACKUP_DIR/$name"
+      dest="$BACKUP_DIR/$name"; n=1
+      while [ -e "$dest" ] || [ -L "$dest" ]; do dest="$BACKUP_DIR/$name.$n"; n=$((n + 1)); done
+      mv "$target" "$dest"
     fi
   else
     echo "cria $name"
   fi
   [ "$DRY" -eq 0 ] && ln -s "$dir" "$target"
 done
+# hooks versionados: a guarda de anonimização vale em toda clone que rodar o install
+if [ "$DRY" -eq 0 ] && [ -d "$REPO_DIR/.githooks" ] && git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  git -C "$REPO_DIR" config core.hooksPath .githooks
+fi
 exit 0

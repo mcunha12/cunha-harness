@@ -44,7 +44,48 @@ class HeavyLockTest(unittest.TestCase):
         self.assertLess(time.time() - start, 5)
 
 
-class OrphanSlotTest(HeavyLockTest):
+class OrphanSlotTest(unittest.TestCase):
+    setUp = HeavyLockTest.setUp
+
+    def test_wrapper_killed_keeps_slot_while_child_runs(self):
+        env = dict(self.env, DEV_HEAVY_SLOTS="1")
+        first = subprocess.Popen(["bash", LOCK, "sleep", "3"], env=env)
+        time.sleep(0.7)
+        first.kill()
+        start = time.time()
+        subprocess.run(["bash", LOCK, "true"], env=env, timeout=20)
+        self.assertGreaterEqual(time.time() - start, 1.5)
+
+    def test_term_stops_child_and_releases(self):
+        env = dict(self.env, DEV_HEAVY_SLOTS="1")
+        marker = os.path.join(self.tmp, "child-ran-to-end")
+        proc = subprocess.Popen(["bash", LOCK, "sh", "-c", f"sleep 4; touch {marker}"], env=env)
+        time.sleep(0.7)
+        proc.terminate()
+        proc.wait(timeout=5)
+        time.sleep(4)
+        self.assertFalse(os.path.exists(marker))
+        self.assertEqual(os.listdir(env["DEV_HEAVY_DIR"]), [])
+
+    def test_concurrent_reclaim_never_exceeds_slots(self):
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        for i in (1, 2):
+            slot = os.path.join(self.env["DEV_HEAVY_DIR"], f"slot-{i}")
+            os.makedirs(slot)
+            with open(os.path.join(slot, "pid"), "w") as f:
+                f.write(str(dead.pid))
+        log = os.path.join(self.tmp, "log")
+        cmd = f"echo start >> {log}; sleep 1; echo end >> {log}"
+        procs = [subprocess.Popen(["bash", LOCK, "sh", "-c", cmd], env=self.env) for _ in range(6)]
+        [p.wait(timeout=40) for p in procs]
+        running, peak = 0, 0
+        with open(log) as f:
+            for line in f:
+                running += 1 if line.strip() == "start" else -1
+                peak = max(peak, running)
+        self.assertLessEqual(peak, 2)
+
     def test_reclaims_old_slot_without_pid_file(self):
         old = time.time() - 60
         for i in (1, 2):

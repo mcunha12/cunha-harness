@@ -47,6 +47,22 @@ class InstallTest(unittest.TestCase):
         self.assertIn("ok a", second.stdout)
         self.assertIn("ok b", second.stdout)
 
+    def test_second_backup_in_same_dir_does_not_nest(self):
+        os.makedirs(os.path.join(self.skills, "b"))
+        self.install()
+        os.remove(os.path.join(self.skills, "b"))
+        os.makedirs(os.path.join(self.skills, "b"))
+        self.assertEqual(self.install().returncode, 0)
+        self.assertEqual(sorted(os.listdir(self.backup)), ["b", "b.1"])
+        self.assertFalse(os.path.exists(os.path.join(self.backup, "b", "b")))
+
+    def test_install_sets_versioned_hooks_path(self):
+        subprocess.run(["git", "init", "-q", self.repo], check=True)
+        os.makedirs(os.path.join(self.repo, ".githooks"))
+        self.install()
+        result = subprocess.run(["git", "-C", self.repo, "config", "core.hooksPath"], capture_output=True, text=True)
+        self.assertEqual(result.stdout.strip(), ".githooks")
+
     def test_dry_run_changes_nothing(self):
         result = self.install("--dry-run")
         self.assertEqual(result.returncode, 0)

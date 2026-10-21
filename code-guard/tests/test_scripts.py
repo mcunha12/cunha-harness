@@ -59,6 +59,14 @@ class LedgerTest(unittest.TestCase):
         self.assertEqual(result[0]["identity"], "review-resiliencia:catch-engolido")
         self.assertTrue(result[0]["domain_loaded"])
 
+    def test_corrupted_line_is_skipped(self):
+        self.append([finding("MAJOR", "confirmado")], "T1")
+        with open(os.path.join(self.home, "ledger.jsonl"), "a") as f:
+            f.write('{"truncad\n')
+        self.append([finding("MAJOR", "confirmado")], "T2")
+        self.append([finding("MAJOR", "confirmado")], "T2")
+        self.assertEqual(len(self.triggers()), 1)
+
     def test_processed_waits_for_new_threshold(self):
         for task in ("T1", "T1", "T2"):
             self.append([finding("MAJOR", "confirmado")], task)

@@ -25,8 +25,14 @@ e = html.escape
 def _read_jsonl(path):
     if not os.path.exists(path):
         return []
+    rows = []
     with open(path) as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue  # linha corrompida (escrita interrompida) não derruba o tracker
+    return rows
 
 
 def _cluster_color(label, labels):
@@ -233,7 +239,7 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
     gates = plan.get("gates", [])
     passed = sum(1 for g in gates if state.get("gates", {}).get(g["id"], {}).get("status") == "passed")
     pct = round(100 * done / len(tasks), 1) if tasks else 0
-    heavy_text = f"{heavy} / 2" if heavy is not None else "—"
+    heavy_text = f"{heavy[0]} / {heavy[1]}" if heavy is not None else "—"
     body.append('<div class="kpis">'
                 f'<div class="kpi"><div class="v">{done} / {len(tasks)}</div><div class="l">tasks concluídas</div>'
                 f'<div class="bar"><i style="width:{pct}%"></i></div></div>'
@@ -274,9 +280,11 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
     for c in costs:
         by_model[c.get("model", "?")] = by_model.get(c.get("model", "?"), 0) + (c.get("tokens") or 0)
     cost_rows = "".join(f'<tr><td>{e(m)}</td><td class="n" style="text-align:right">{v:,}</td></tr>' for m, v in by_model.items())
-    review_rows = "".join(f'<tr><td>Review {e(r.get("kind", ""))} {e(", ".join(r.get("tasks", [])))}</td>'
-                          f'<td class="n" style="text-align:right">{f"{r['tokens']:,}" if r.get("tokens") is not None else "—"}</td></tr>'
-                          for r in state.get("reviews", []))
+    review_rows = ""
+    for r in state.get("reviews", []):
+        tokens = f"{r['tokens']:,}" if r.get("tokens") is not None else "—"
+        review_rows += (f'<tr><td>Review {e(r.get("kind", ""))} {e(", ".join(r.get("tasks", [])))}</td>'
+                        f'<td class="n" style="text-align:right">{tokens}</td></tr>')
     body.append(f'<div class="two"><section class="card"><h2>Decisões</h2>{_list(decision_items, "Nenhuma decisão ainda.")}</section>'
                 f'<section class="card"><h2>Aprendizado (/code-guard)</h2>{_list(learned_items, "Nenhum achado registrado nesta feature.")}'
                 '<h2 style="margin-top:14px">Custo até agora</h2><table><thead><tr><th>Item</th><th style="text-align:right">Tokens</th>'
@@ -284,11 +292,27 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
     return template.replace("{{TITLE}}", e(feature)).replace("{{BODY}}", "\n".join(body))
 
 
-def _heavy_count():
+def _pid_alive(pid):
+    try:
+        os.kill(int(pid), 0)
+    except (ValueError, ProcessLookupError):
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def heavy_status():
     folder = os.environ.get("DEV_HEAVY_DIR", os.path.expanduser("~/.claude/dev/heavy"))
-    if not os.path.isdir(folder):
-        return 0
-    return sum(1 for n in os.listdir(folder) if n.startswith("slot-"))
+    slots = int(os.environ.get("DEV_HEAVY_SLOTS", "2"))
+    live = 0
+    if os.path.isdir(folder):
+        for name in os.listdir(folder):
+            pid_file = os.path.join(folder, name, "pid")
+            if name.startswith("slot-") and os.path.isfile(pid_file):
+                with open(pid_file) as f:
+                    live += any(_pid_alive(p) for p in f.read().split())
+    return live, slots
 
 
 def render_dir(feature_dir):
@@ -303,7 +327,7 @@ def render_dir(feature_dir):
     ledger = _read_jsonl(os.path.join(os.environ.get("CODE_GUARD_HOME", os.path.expanduser("~/.claude/code-guard")), "ledger.jsonl"))
     learned = [x for x in ledger if x.get("feature") == state.get("feature")]
     page = render(plan, state, _read_jsonl(os.path.join(feature_dir, "decisions.jsonl")),
-                  _read_jsonl(os.path.join(feature_dir, "costs.jsonl")), learned, heavy=_heavy_count(),
+                  _read_jsonl(os.path.join(feature_dir, "costs.jsonl")), learned, heavy=heavy_status(),
                   situation=load("situation.json"))
     out = os.path.join(feature_dir, "tracker.html")
     tmp = out + ".tmp"
