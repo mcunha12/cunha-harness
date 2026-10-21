@@ -93,6 +93,26 @@ class DevstateTest(unittest.TestCase):
         self.assertEqual(s["tasks"]["T3"]["status"], "pending")
         self.assertNotIn("2", s["tasks"]["T3"]["outputs"])
 
+    def test_step_started_refuses_step_already_done(self):
+        s = devstate.step_done(self.state, "T3", 1, "tasks/T3/scope.md")
+        with self.assertRaises(devstate.StepConflict):
+            devstate.step_started(s, "T3", 1, 1)
+
+    def test_step_started_refuses_step_already_running(self):
+        s = devstate.step_started(self.state, "T3", 2, 1)
+        with self.assertRaises(devstate.StepConflict):
+            devstate.step_started(s, "T3", 2, 2)
+
+    def test_step_started_force_reopens(self):
+        s = devstate.step_done(self.state, "T3", 1, "tasks/T3/scope.md")
+        s = devstate.step_started(s, "T3", 1, 1, force=True)
+        self.assertEqual(s["tasks"]["T3"]["step_running"], 1)
+
+    def test_baseline_failures_recorded(self):
+        s = devstate.set_baseline(self.state, ["src/test/a.test.ts > caso x", "src/test/b.test.ts"])
+        self.assertEqual(s["baseline_failures"], ["src/test/a.test.ts > caso x", "src/test/b.test.ts"])
+        self.assertIn("baseline", s["checkpoint"]["note"])
+
     def test_stale_files(self):
         with open(os.path.join(self.tmp, "a.txt"), "w") as f:
             f.write("1")
