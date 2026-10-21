@@ -37,6 +37,14 @@ class RenderTrackerTest(unittest.TestCase):
         self.assertIn("caminho crítico (custo 48)", html)
         HTMLParser().feed(html)
 
+    def test_worker_shows_opus_effort_of_the_task(self):
+        state = copy.deepcopy(self.state)
+        state["workers"][0]["assignment"]["from_step"] = 3
+        state["tasks"]["T3"]["step_running"] = 3
+        self.assertIn("avaliação · Opus medium", render(self.plan, state, [], [], []))
+        next(t for t in self.plan["tasks"] if t["id"] == "T3")["opus_effort"] = "xhigh"
+        self.assertIn("avaliação · Opus xhigh", render(self.plan, state, [], [], []))
+
     def test_render_requirements_phase_without_plan(self):
         state = copy.deepcopy(self.state)
         state.update(phase="requirements", tasks={}, gates={})

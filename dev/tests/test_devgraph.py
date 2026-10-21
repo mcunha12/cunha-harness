@@ -74,6 +74,16 @@ class DevgraphCoreTest(unittest.TestCase):
         self.task_in(plan, "T1")["risk"] = 6
         self.assertIn({"code": "invalid_score", "task": "T1", "field": "risk"}, validate(plan))
 
+    def test_invalid_opus_effort(self):
+        plan = copy.deepcopy(self.plan)
+        self.task_in(plan, "T1")["opus_effort"] = "high"
+        self.assertIn({"code": "invalid_opus_effort", "task": "T1"}, validate(plan))
+
+    def test_xhigh_opus_effort_is_valid(self):
+        plan = copy.deepcopy(self.plan)
+        self.task_in(plan, "T1")["opus_effort"] = "xhigh"
+        self.assertEqual(validate(plan), [])
+
     @staticmethod
     def task_in(plan, tid):
         return next(t for t in plan["tasks"] if t["id"] == tid)

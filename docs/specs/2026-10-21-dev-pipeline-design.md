@@ -42,7 +42,8 @@ Anti-objetivos (falha mesmo que funcione):
 ## 3. Restrições
 
 - Todas as regras do `~/.claude/CLAUDE.md` valem dentro do pipeline e em todo subagent: STE Operacional, comentários one-liner, testes só dos arquivos alterados com `--maxWorkers=2`, /test-audit antes de mudar comportamento, UI em navegador headless no iPhone SE (375×667) e depois desktop (1440×900), releitura antes de todo write.
-- Modelos e esforço por papel, fixados pelo Marcelo: escopo e avaliação em Opus 5.5 xhigh, leitura de código em Haiku 5.5 medium, implementação em Sonnet 5.5 medium.
+- Modelos e esforço por papel, fixados pelo Marcelo: escopo e avaliação em Opus 5.5 medium, leitura de código em Haiku 5.5 medium, implementação em Sonnet 5.5 medium.
+- Opus sobe para xhigh por task, só quando a task é grande ou carrega muitas regras: complexidade 4 ou 5, ou 5 ou mais regras de negócio no `done_when` e na spec da task. Na dúvida, o orquestrador pergunta ao Marcelo no planejamento. Decisão do Marcelo, 21/10.
 - No máximo 4 workers.
 - Repositório das skills: `github.com/mcunha12/cunha-harness`, uma pasta por skill.
 - `dev` e `master-review` não têm `disable-model-invocation`. O /dev invoca a master-review pelo Skill tool, com as flags.
@@ -59,7 +60,7 @@ Anti-objetivos (falha mesmo que funcione):
 
 ## 5. Fase 1 — Requisitos (todas as features do pedido)
 
-1. Entrada. O orquestrador (Opus xhigh) lê todas as fontes: Jira e Notion pelos conectores, arquivo e imagem pelo Read. Link citado dentro de uma fonte é seguido até 1 nível.
+1. Entrada. O orquestrador (sessão principal) lê todas as fontes: Jira e Notion pelos conectores, arquivo e imagem pelo Read. Link citado dentro de uma fonte é seguido até 1 nível.
 2. Recon em paralelo. Enquanto o Opus lê, um swarm Haiku mapeia onde o pedido toca no código: módulos, rotas, telas, testes existentes.
 3. Divisão em features. Uma feature pode cruzar repos (BFF + web, por exemplo). Critério: 1 feature = 1 branch com o mesmo nome em cada repo que ela toca = 1 MR por repo. O orquestrador mostra a divisão. O Marcelo confirma e escolhe a ordem. Dependência entre features (B usa o endpoint que A cria) aparece aqui e informa a ordem.
 4. Perguntas. Só o que fontes e código não respondem. Rodadas de até 4 perguntas pelo AskUserQuestion, opção recomendada primeiro. Entra nas perguntas o acesso a dado real para os testes (a /test-audit exige registro real anonimizado), para a execução não travar depois.
@@ -166,9 +167,9 @@ Nenhum worker fica parado enquanto houver trabalho em qualquer uma das três fil
 
 | Passo | Papel | Modelo | Saída em `tasks/<id>/` |
 |---|---|---|---|
-| 1 Escopo | fecha entrega e critério de pronto | Opus 5.5 xhigh | `scope.md` |
+| 1 Escopo | fecha entrega e critério de pronto | Opus 5.5 medium (xhigh por task) | `scope.md` |
 | 2 Leitura | lê `read_list` e devolve fatos com `arquivo:linha` | swarm Haiku 5.5 medium, até 3 agentes | `reading.md` |
-| 3 Avaliação | decide arquivos, mudança por arquivo, casos de teste, comandos de verificação | Opus 5.5 xhigh | `plan.md` |
+| 3 Avaliação | decide arquivos, mudança por arquivo, casos de teste, comandos de verificação | Opus 5.5 medium (xhigh por task) | `plan.md` |
 | 4 Testes | modo A da /test-audit: spec, testes de integração/E2E com dado real anonimizado, vermelho pelo motivo certo, commit | Sonnet 5.5 medium | commit `test:` |
 | 5 Implementação | implementa até o verde, com a `code-guard` carregada | Sonnet 5.5 medium | commits `feat:`/`fix:` + `result.json` |
 | 6 Review | /master-review lean (seção 7.4) | ver seção 10 | `reviews/<id>.md` |
