@@ -14,3 +14,5 @@ Roda no começo para todas as features do pedido. Depois dela, a execução não
    - `decisions.jsonl`: cada decisão com a origem (fonte, código, resposta).
 
 A spec serve também de spec do Mode A da /test-audit.
+
+6. Feature que depende de outra ainda aberta (mesmos arquivos ou branch base dela): grave a espera e dispare o loop de `ready` (SKILL.md, seção 3). A Fase 2 roda quando a outra fechar, a partir da branch dela. Ao Marcelo, diga só que a feature está na fila e que começa sozinha.

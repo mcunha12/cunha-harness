@@ -49,6 +49,28 @@ class DevstateTest(unittest.TestCase):
         self.assertEqual(s["phase"], "execution")
         self.assertIsNone(s["paused"])
 
+    def test_wait_queues_feature_behind_another(self):
+        dep = tempfile.mkdtemp()
+        devstate._save(dep, devstate.init(dep, "dep", {}))
+        s = devstate.wait_for(self.state, dep)
+        self.assertEqual(s["waits_for"], dep)
+        self.assertIn("dep", s["checkpoint"]["note"])
+        self.assertFalse(devstate.is_ready(s))
+        devstate._save(dep, devstate.set_phase(devstate.load(dep), "done"))
+        self.assertTrue(devstate.is_ready(s))
+
+    def test_feature_without_wait_is_ready(self):
+        self.assertTrue(devstate.is_ready(self.state))
+
+    def test_ready_cli_exit_code_follows_dependency(self):
+        dep = tempfile.mkdtemp()
+        devstate._save(dep, devstate.init(dep, "dep", {}))
+        devstate._save(self.tmp, self.state)
+        self.assertEqual(devstate.main(["devstate.py", "wait", self.tmp, dep]), 0)
+        self.assertEqual(devstate.main(["devstate.py", "ready", self.tmp]), 1)
+        devstate._save(dep, devstate.set_phase(devstate.load(dep), "done"))
+        self.assertEqual(devstate.main(["devstate.py", "ready", self.tmp]), 0)
+
     def test_set_phase(self):
         s = devstate.set_phase(self.state, "execution")
         self.assertEqual(s["phase"], "execution")

@@ -27,6 +27,7 @@ A sessão principal é o orquestrador. Ela guarda estado, chama os scripts e dis
 5. Todo estado passa por `scripts/devstate.py`. Nunca edite `state.json` à mão.
 6. Todo comando pesado (`tsc`, testes, build, navegador, `npm install`) passa por `scripts/heavy_lock.sh`.
 7. Push e abertura de MR pedem confirmação do Marcelo.
+8. O orquestrador manda no andamento. Ele nunca devolve "rode /dev resume" ao Marcelo: a feature na fila começa sozinha quando a que ela espera fecha. Decisão de como fazer (layout, nome de componente, ordem de tasks) é dele e vai ao Marcelo em uma linha, sem pedir confirmação. Ao Marcelo vai só o que muda o quê (escopo, regra de negócio, dado).
 
 ## 3. Fluxo
 
@@ -35,6 +36,12 @@ A sessão principal é o orquestrador. Ela guarda estado, chama os scripts e dis
 3. Fase 3, execução: `references/phase-3-execution.md`.
 
 Uma feature por vez, do começo ao fim. As outras ficam na fila com a spec pronta.
+
+Fila entre features, inclusive de outra sessão:
+
+1. `devstate.py wait <dir> <dir da feature esperada>` grava a espera.
+2. Dispare em background: `until python3 ~/.claude/skills/dev/scripts/devstate.py ready <dir>; do sleep 300; done`.
+3. Quando o loop sair, comece a Fase 2 da feature na hora, sem perguntar.
 
 ## 4. Loop do orquestrador (Fase 3)
 

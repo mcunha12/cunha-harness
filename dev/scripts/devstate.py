@@ -149,6 +149,23 @@ def resume(state):
     return _checkpoint(s, "retomada")
 
 
+def wait_for(state, dep_dir):
+    s = copy.deepcopy(state)
+    s["waits_for"] = dep_dir
+    name = load(dep_dir).get("feature") or os.path.basename(os.path.normpath(dep_dir))
+    return _checkpoint(s, f"na fila: espera {name}")
+
+
+def is_ready(state):
+    dep_dir = state.get("waits_for")
+    if not dep_dir:
+        return True
+    try:
+        return load(dep_dir).get("phase") == "done"
+    except FileNotFoundError:
+        return False
+
+
 def hash_files(repo_path, files):
     out = {}
     for name in files:
@@ -196,6 +213,7 @@ USAGE = """uso: devstate.py <op> <feature_dir> ...
   reset-steps <dir> <task> <from_step>
   phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
+  wait <dir> <dep_feature_dir> | ready <dir>  (exit 0 = pode começar)
   decision <dir> <json> | cost <dir> <json>
   hash <repo_path> <file>... | stale <repo_path> <hashes.json>"""
 
@@ -221,6 +239,8 @@ def main(argv):
         _save(target, load(target))
         return 0
     state = load(target)
+    if op == "ready":
+        return 0 if is_ready(state) else 1
     if op == "step-started":
         state = step_started(state, args[0], int(args[1]), int(args[2]))
     elif op == "step-done":
@@ -240,6 +260,8 @@ def main(argv):
         state = pause(state, args[0] if args else "stop")
     elif op == "resume":
         state = resume(state)
+    elif op == "wait":
+        state = wait_for(state, args[0])
     else:
         print(USAGE, file=sys.stderr)
         return 2
