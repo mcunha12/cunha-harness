@@ -9,12 +9,16 @@ mkdir -p "$DIR"
 held=""
 child=""
 
-age() { echo $(( $(date +%s) - $(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0) )); }
+# arquivo que sumiu entre a checagem e o stat conta como recente: outro processo pode ter acabado de recriar
+age() { echo $(( $(date +%s) - $(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || date +%s) )); }
 
 slot_alive() {
   # o arquivo pid guarda o wrapper e o filho; o slot vive enquanto qualquer um viver
-  local p
-  for p in $(cat "$1/pid" 2>/dev/null); do
+  local p pids
+  pids=$(cat "$1/pid" 2>/dev/null)
+  # pid ilegível ou vazio é slot em troca de dono: conta como vivo
+  [ -z "$pids" ] && return 0
+  for p in $pids; do
     # zumbi responde ao kill -0 mas já morreu
     kill -0 "$p" 2>/dev/null && ! ps -o stat= -p "$p" 2>/dev/null | grep -q '^Z' && return 0
   done
