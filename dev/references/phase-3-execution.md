@@ -4,10 +4,11 @@
 
 `devgraph.py next` decide, nesta ordem:
 
+0. `merge` de toda task de risco baixo ou médio `implemented`. Não ocupa worker: o orquestrador faz na hora.
 1. task pronta (dependências satisfeitas), pela maior `caminho_à_frente`, a partir do primeiro passo pendente;
-2. review lean pendente;
+2. review lean pendente (só task de risco alto);
 3. gate com todas as tasks `done`;
-4. passos 1 e 2 de task futura (leitura antecipada), só sem arquivo em comum com task em andamento.
+4. passo 1 de task futura (escopo antecipado), só sem arquivo em comum com task em andamento. O passo 2 espera a task ficar pronta: leitura de código com dependência aberta envelhece antes do passo 3 (feature pedido-na-secretaria, 21/10/2026: T2 a T4 releram tudo depois que a T1 mudou o contrato).
 
 Dependência satisfeita: task `done`; gate `passed`; ou task `implemented` do mesmo cluster e de risco abaixo de 4 (empilhamento).
 
@@ -29,10 +30,9 @@ Dependência satisfeita: task `done`; gate `passed`; ou task `implemented` do me
 
 ## 3. Review lean e branches
 
-- Task de risco alto: review lean logo após o passo 5, só no diff dela, com `--roast`.
-- Risco baixo ou médio: entra no lote do cluster; a review roda quando todas as tasks do cluster estão `implemented` ou `done`, no diff combinado. Se um dependente de fora do cluster ou um gate espera só por ela, a review do lote roda já.
-- Rode a review no diretório do lote: para uma task, a worktree dela; para um lote, uma worktree de integração com as branches do lote mescladas.
-- `master-review --lean --base <branch da feature> --spec <dir>/spec.md [--roast]`. Os fixers editam o working tree; commite as correções como `fix(review): …`.
+- Task de risco alto (4 ou 5): review lean logo após o passo 5, só no diff dela, com `--roast`, na worktree dela.
+- Risco baixo ou médio (1 a 3): sem review lean. Assignment `merge`: merge da branch na branch da feature, `task-status done`, `git worktree remove`. O gate revisa o diff inteiro. Medido em pedido-na-secretaria: as reviews lean de risco 2 e 3 custaram 3,1 M tokens (34% da feature) e acharam 2 MAJOR; o gate achou outros 5 sozinho.
+- `master-review --lean --base <branch da feature> --spec <dir>/spec.md --roast --only <até 5 especialistas>`. Escolha os 5 pelo diff (o que o código toca: fronteira, banco, UI, auth). `spec`, `roast`, `test-audit` e as checagens determinísticas ficam fora da conta. Cada especialista custa 65 a 100 mil tokens quase fixos (skill, referências e diff), qualquer que seja o tamanho do diff. Os fixers editam o working tree; commite as correções como `fix(review): …`.
 - Passou (zero BLOCKER e MAJOR): merge da branch na branch da feature, `devstate.py task-status <dir> <task> done`, `git worktree remove`.
 - MAJOR que os fixers não resolveram, revisão visual pendente em task com UI, ou lacuna de especialista: `task-status blocked`. A task não entra na branch da feature.
 - Registre a review: `reviews/<id>.md` e o item em `state.reviews` (via decisão de custo com `agent_role: "review"`).

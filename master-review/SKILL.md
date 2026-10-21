@@ -26,7 +26,7 @@ A verificação de BLOCKER/MAJOR (passo 8) é do próprio orquestrador. Ela não
 
 | Flag | Efeito |
 |---|---|
-| `--lean` | Modo do /dev por task ou cluster. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
+| `--lean` | Modo do /dev para task de risco alto. Até 5 especialistas, passados em `--only` e escolhidos pelo diff; `spec`, `roast`, `test-audit` e as checagens determinísticas não contam. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
 | `--roast` | Liga o `review-roast` no modo `--lean`. Na full ele já roda. |
 | `--spec <path>` | Spec da feature (o /dev sempre passa). Liga o eixo Spec (passo 4b) e vai para o roast. |
 | `--base <branch>` | Base do diff. Padrão: config > `main` > `master` > `develop`, o primeiro que existir no remote. |

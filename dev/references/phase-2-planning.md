@@ -30,7 +30,7 @@ Risco:
 | 4 | contrato entre serviços, autenticação, dinheiro, dado de usuário |
 | 5 | migration de schema, dado irreversível, segurança |
 
-Risco 4 ou 5 = risco alto: review lean sozinha e com roast.
+Risco 4 ou 5 = risco alto: review lean sozinha e com roast. Risco 1 a 3 vai para a branch da feature sem review lean; o gate revisa.
 
 Esforço do Opus (passos 1 e 3): `opus_effort` é `medium` por padrão. Marque `xhigh` quando a task tem complexidade 4 ou 5, ou 5 ou mais regras de negócio no `done_when` e na spec da task. Na dúvida, pergunte ao Marcelo antes de publicar o plano, com a task e o motivo. Toda task em `xhigh` vira decisão em `decisions.jsonl`, com o motivo.
 
