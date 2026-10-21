@@ -1,0 +1,17 @@
+# .claude/review.config.yml — tudo opcional; o do repo sobrescreve ~/.claude/review.config.yml
+repo_role: ""            # texto livre, ex.: "camada de agregação para o front", "serviço de IA"; vazio = inferir
+base_branch: main
+related_repos: []        # caminhos locais dos repos irmãos, usados por review-contratos e review-dry
+ignore_paths:
+  - "**/*.lock"
+  - "yarn.lock"
+  - "package-lock.json"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - "**/*.snap"
+  - "**/generated/**"
+skip_agents: []          # ex.: [a11y]
+severity_threshold: MINOR
+conventions: |
+  # padrões do time que os revisores devem respeitar
