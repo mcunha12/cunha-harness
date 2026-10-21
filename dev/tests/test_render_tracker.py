@@ -43,6 +43,19 @@ class RenderTrackerTest(unittest.TestCase):
         html = render(None, state, [], [], [])
         self.assertIn("Requisitos", html)
 
+    def test_render_dir_shows_situation_block(self):
+        tmp = tempfile.mkdtemp()
+        for name, data in (("plan.json", self.plan), ("state.json", self.state),
+                           ("situation.json", {"at": "2026-10-21T15:10:00",
+                                               "lines": ["T3 em implementação.", "T2 aguarda o cluster A."]})):
+            with open(os.path.join(tmp, name), "w") as f:
+                json.dump(data, f)
+        with open(render_dir(tmp)) as f:
+            html = f.read()
+        self.assertIn("Situação agora", html)
+        self.assertIn("T2 aguarda o cluster A.", html)
+        self.assertLess(html.index("Situação agora"), html.index("Workers agora"))
+
     def test_render_dir_writes_file(self):
         tmp = tempfile.mkdtemp()
         with open(os.path.join(tmp, "plan.json"), "w") as f:

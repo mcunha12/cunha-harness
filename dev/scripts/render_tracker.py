@@ -200,7 +200,7 @@ def _list(items, empty):
     return '<ul class="plain">' + "".join(items) + "</ul>"
 
 
-def render(plan, state, decisions, costs, learned, heavy=None):
+def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
     with open(os.path.join(HERE, "tracker_template.html")) as f:
         template = f.read()
     feature = state.get("title") or state.get("feature", "feature")
@@ -213,6 +213,10 @@ def render(plan, state, decisions, costs, learned, heavy=None):
             f'<span>repos: {e(", ".join(state.get("repos", {})) or "—")}</span>'
             f'<span>checkpoint {e(checkpoint.get("at", "")[11:16])} · {e(checkpoint.get("note", ""))}</span>'
             f'<span>pausar: <code>/dev stop</code></span></div>']
+    if situation and situation.get("lines"):
+        items = "".join(f"<li>{e(line)}</li>" for line in situation["lines"])
+        body.append(f'<section class="card"><h2>Situação agora</h2><ul class="plain">{items}</ul>'
+                    f'<p class="src" style="margin:8px 0 0">atualizado {e(str(situation.get("at", ""))[11:16])}</p></section>')
     decision_items = [f'<li>{e(d.get("id", ""))} · {e(d.get("text", ""))}<br><span class="src">origem: {e(d.get("origin", ""))}</span></li>'
                       for d in decisions]
     if not plan or not plan.get("tasks"):
@@ -299,7 +303,8 @@ def render_dir(feature_dir):
     ledger = _read_jsonl(os.path.join(os.environ.get("CODE_GUARD_HOME", os.path.expanduser("~/.claude/code-guard")), "ledger.jsonl"))
     learned = [x for x in ledger if x.get("feature") == state.get("feature")]
     page = render(plan, state, _read_jsonl(os.path.join(feature_dir, "decisions.jsonl")),
-                  _read_jsonl(os.path.join(feature_dir, "costs.jsonl")), learned, heavy=_heavy_count())
+                  _read_jsonl(os.path.join(feature_dir, "costs.jsonl")), learned, heavy=_heavy_count(),
+                  situation=load("situation.json"))
     out = os.path.join(feature_dir, "tracker.html")
     tmp = out + ".tmp"
     with open(tmp, "w") as f:

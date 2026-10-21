@@ -52,6 +52,8 @@ enquanto o gate final não passou:
 
 Nenhum slot fica livre enquanto `next` devolver trabalho. Cada `devstate.py` regrava o `tracker.html`.
 
+Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da feature): dispare em background um agente `model: "haiku"`, `effort: "medium"` com `prompts/situation.md`. Ele grava `situation.json` e o bloco "Situação agora" aparece no topo do tracker. Esse agente não ocupa worker. O resto da página continua com o script, sem token.
+
 ## 5. Modelos e esforço
 
 | Passo | Agent tool |
@@ -74,6 +76,7 @@ Nenhum slot fica livre enquanto `next` devolver trabalho. Cada `devstate.py` reg
 | `references/pause-resume.md` | `/dev stop` e `/dev resume` |
 | `references/phase-*.md` | as três fases |
 | `prompts/step-*.md` | prompts dos passos 1 a 5 |
+| `prompts/situation.md` | bloco "Situação agora" do tracker (Haiku medium, só nos marcos) |
 | `scripts/devgraph.py` | `validate`, `analyze`, `next` |
 | `scripts/devstate.py` | estado atômico, checkpoints, logs, hash de leitura |
 | `scripts/heavy_lock.sh` | trava global de 2 processos pesados (`DEV_HEAVY_SLOTS`) |

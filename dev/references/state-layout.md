@@ -10,6 +10,7 @@
     costs.jsonl       # um registro por agente
     tasks/<id>/scope.md, reading.md, plan.md, result.json
     reviews/<id>.md
+    situation.json    # bloco "Situação agora", escrito pelo Haiku nos marcos
     tracker.html      # gerado; nunca edite
   repos/<repo>/run.json
   heavy/slot-N/       # trava de processo pesado
