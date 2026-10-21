@@ -28,6 +28,7 @@ A verificação de BLOCKER/MAJOR (passo 8) é do próprio orquestrador. Ela não
 |---|---|
 | `--lean` | Modo do /dev por task ou cluster. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
 | `--roast` | Liga o `review-roast` no modo `--lean`. Na full ele já roda. |
+| `--spec <path>` | Spec da feature (o /dev sempre passa). Liga o eixo Spec (passo 4b) e vai para o roast. |
 | `--base <branch>` | Base do diff. Padrão: config > `main` > `master` > `develop`, o primeiro que existir no remote. |
 | `--path <glob>` | Restringe o escopo aos arquivos que batem com o glob. |
 | `--full` | Repo inteiro. Avise o custo estimado (arquivos × agentes) e faça sharding de ~25 arquivos por subagent. |
@@ -94,6 +95,10 @@ Decida os agentes e imprima a tabela `agente → motivo` / `pulado porque`.
 
 Aplique `skip_agents`, `--only` e `--skip` depois da tabela.
 
+### 3b. Checagens determinísticas (todo modo)
+
+Antes do scan, rode `python3 ~/.claude/skills/code-guard/scripts/diff_checks.py run --repo <repo> --base <base> [--uncommitted]`. Os achados (régua afrouxada: `@ts-ignore`, `eslint-disable` sem motivo, teste com `skip`/`only`, cobertura reduzida, lint ou `strict` afrouxado, e as checagens aprendidas) entram direto na coleta como MAJOR `confirmado`, nível de prova 2. Passe a lista aos especialistas: eles não reportam de novo o que a checagem já pegou.
+
 ### 4. Scan em paralelo (Haiku)
 
 Numa única mensagem, uma chamada Agent por especialista, todas com `model: "haiku"` e `subagent_type: "general-purpose"`. Prompt de cada uma:
@@ -118,9 +123,15 @@ front e a11y: acrescente ao prompt "Viewport de referência: iPhone SE (375×667
 
 test-audit: dispare um subagent Haiku que carrega a skill `test-audit` e roda o **Mode B (conference gate)** só em modo leitura: itens 1, 3 e 4 (ordem dos commits, fixtures com PII, classificação de cada teste adicionado ou alterado). Ele não roda testes e não edita. O resultado passa pelo adapter de `references/test-audit-adapter.md`.
 
+### 4b. Eixo Spec (com `--spec`)
+
+Dispare um agente `model: "sonnet"`, `effort: "medium"`, com o prompt de `references/spec-review.md`, a spec e o diff. Ele lista requisito faltando, escopo a mais e implementação errada, cada um citando a linha da spec. Prefixo `SPEC`. O relatório tem uma seção própria "Spec": esses achados não entram na dedup com os especialistas. BLOCKER e MAJOR do Spec passam pela verificação do passo 8.
+
 ### 5. Coleta e validação
 
-Valide cada JSON contra `references/output-contract.md`: campos obrigatórios, enums de severidade/confiança, `evidence` não vazia, `fix` concreto. Saída malformada: retome o mesmo subagent (SendMessage) uma vez, com o erro. Falhou de novo: descarte e registre em "Agentes com falha".
+Valide cada JSON contra `references/output-contract.md`: campos obrigatórios, enums de severidade/confiança, `evidence` literal não vazia em todo achado, `fix` concreto. Saída malformada ou achado sem evidência: retome o mesmo subagent (SendMessage) uma vez, com o erro.
+
+Falhou de novo: o especialista vira **lacuna**. Lacuna não conta como aprovação: o relatório lista "lacuna: review-<tema>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, lacuna bloqueia a task até a review rodar de novo.
 
 ### 6. Dedup
 
@@ -132,7 +143,19 @@ Quando dois agentes pedem coisas opostas no mesmo trecho (dry quer extrair, legi
 
 ### 8. Verificação (obrigatória)
 
-Para cada BLOCKER e MAJOR, o orquestrador abre o arquivo, lê o contexto (caller, callee, config) e confirma. Resultado por achado: `confirmado`, `rebaixado para <nível>` ou `descartado`, sempre com o motivo em uma linha. Achados de confiança baixa de MINOR para baixo passam sem verificação, mas não viram task de correção.
+Para cada BLOCKER e MAJOR, o orquestrador abre o arquivo, lê o contexto (caller, callee, config) e confirma. Resultado por achado: `confirmado`, `rebaixado para <nível>` ou `descartado`, sempre com o motivo em uma linha.
+
+Registre o nível de prova (`proof_level`, escada em `references/severity-rubric.md`):
+
+| Nível | Prova |
+|---|---|
+| 1 | afirmado pelo especialista |
+| 2 | `arquivo:linha` lido com o contexto |
+| 3 | o caso que tornaria o achado falso foi descartado no código (caller, config, guard) |
+| 4 | código rodado: script curto, teste ou request que mostra o defeito |
+| 5 | reproduzido no app pelo fluxo real |
+
+BLOCKER exige nível 4 ou mais. Abaixo disso, escreva o script curto que prova o fato central (via `heavy_lock.sh` quando roda testes); sem conseguir, o achado é `rebaixado para MAJOR` com a nota "não provado (nível N)". MAJOR precisa de nível 2 ou mais. Achados de confiança baixa de MINOR para baixo passam sem verificação, mas não viram task de correção.
 
 ### 8b. Revisão visual em celular (obrigatória com UI no diff)
 
@@ -155,7 +178,7 @@ Com UI no diff, dispare o `review-ux` (`model: "sonnet"`) com os prints do 8b, o
 
 Salve em `<repo>/.claude/reviews/<branch-sem-barra>-<YYYYMMDD-HHMM>.md` e mostre no terminal. Formato em `references/report-template.md`. Ordem:
 
-Com `--lean`, o relatório tem só: veredito, achados BLOCKER/MAJOR por arquivo, Roast (quando ligado) e Correção.
+Com `--lean`, o relatório tem só: veredito, achados BLOCKER/MAJOR por arquivo (com o nível de prova), Spec (quando houver `--spec`), lacunas, Roast (quando ligado) e Correção.
 
 1. Veredito: **APROVAR** (zero BLOCKER e zero MAJOR), **APROVAR COM RESSALVAS** (MAJOR sem BLOCKER), **BLOQUEAR** (algum BLOCKER).
 2. Resumo executivo, 3-5 linhas.

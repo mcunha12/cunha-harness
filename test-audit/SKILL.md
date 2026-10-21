@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: Use BEFORE implementing any change that alters behavior (feature, bugfix, behavior-affecting refactor) in any repository, to write the spec and the integration/E2E tests first with anonymized real data. Also use when writing or reviewing tests, before pushing a branch or opening, updating, or merging any MR/PR (conference gate), and when asked to audit or clean up a test suite.
+description: Use BEFORE implementing any change that alters behavior (feature, bugfix, behavior-affecting refactor) in any repository, to write the spec and the integration/E2E tests first with anonymized real data. Also use when writing or reviewing tests, before pushing a branch or opening, updating, or merging any MR/PR (conference gate), and when asked to audit or clean up a test suite. Em português: "escreve a spec e os testes antes de implementar", "testes de integração/E2E primeiro", "conference gate antes do MR", "audita a suíte de testes", "esse teste é tautológico?".
 ---
 
 # Test Audit

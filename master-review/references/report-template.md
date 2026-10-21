@@ -10,7 +10,7 @@
 ## BLOCKER
 ### `<arquivo>`
 #### SEG-001 — <título> · review-seguranca (+ review-contratos)
-**Linhas:** 42-58 · **Confiança:** alta · **Verificação:** confirmado
+**Linhas:** 42-58 · **Confiança:** alta · **Verificação:** confirmado · **Prova:** nível 4 (script `<run>/proofs/SEG-001.sh`)
 **Evidência:**
 ```ts
 ```
@@ -24,6 +24,14 @@
 
 <details><summary>NITs (n)</summary>
 </details>
+
+## Spec
+| Achado | Tipo | Linha da spec | Diff | Verificação |
+|---|---|---|---|---|
+Tipos: faltando, a mais, errado.
+
+## Lacunas
+Especialistas que falharam duas vezes no contrato. Cada lacuna limita o veredito a APROVAR COM RESSALVAS.
 
 ## Roast
 Uma linha por crítica do review-roast que sobreviveu à verificação: id, arquivo:linhas, crítica, motivo e consequência. Críticas descartadas por contradizer convenção documentada vão em `<details>` com o motivo.

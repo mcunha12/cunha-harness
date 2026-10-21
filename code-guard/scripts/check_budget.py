@@ -9,9 +9,10 @@ import sys
 LIMITS = {"core": 150, "domain": 120, "learned": 80}
 RULE = re.compile(r"^- \[[A-Z0-9]+\] ")
 ORIGIN = re.compile(r" — origem: review-[a-z0-9-]+/\S")
+ENFORCEMENT = re.compile(r" · impõe: (texto|check:[a-z0-9-]+|lint:\S+|tipo)")
 
 
-def check_file(path, limit):
+def check_file(path, limit, learned=False):
     issues = []
     with open(path) as f:
         lines = f.read().splitlines()
@@ -20,6 +21,8 @@ def check_file(path, limit):
     for n, line in enumerate(lines, 1):
         if RULE.match(line) and not ORIGIN.search(line):
             issues.append({"file": path, "code": "missing_origin", "line": n})
+        elif learned and RULE.match(line) and not ENFORCEMENT.search(line):
+            issues.append({"file": path, "code": "missing_enforcement", "line": n})
     return issues
 
 
@@ -31,7 +34,7 @@ def check(root, learned=None):
     for path in sorted(glob.glob(os.path.join(root, "domains", "*.md"))):
         issues += check_file(path, LIMITS["domain"])
     for path in sorted(glob.glob(os.path.join(learned, "*.md"))) if learned else []:
-        issues += check_file(path, LIMITS["learned"])
+        issues += check_file(path, LIMITS["learned"], learned=True)
     return issues
 
 

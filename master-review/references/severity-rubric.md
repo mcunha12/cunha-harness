@@ -16,3 +16,13 @@
 - BLOCKER com confiança baixa vira MAJOR até ser confirmado.
 - Severidade mede o impacto se o problema existir. Confiança mede a chance de ele existir. Não misture as duas.
 - A rubrica de cada especialista refina esta. Em conflito, esta vence.
+
+## Nível de prova (`proof_level`)
+
+1. Afirmado pelo especialista.
+2. `arquivo:linha` lido com o contexto.
+3. O caso que tornaria o achado falso foi descartado no código.
+4. Código rodado (script curto, teste, request) mostra o defeito.
+5. Reproduzido no app pelo fluxo real.
+
+BLOCKER exige nível 4 ou mais; abaixo disso, vira MAJOR com a nota "não provado (nível N)". MAJOR exige nível 2 ou mais.

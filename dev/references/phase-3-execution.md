@@ -32,18 +32,19 @@ Dependência satisfeita: task `done`; gate `passed`; ou task `implemented` do me
 - Task de risco alto: review lean logo após o passo 5, só no diff dela, com `--roast`.
 - Risco baixo ou médio: entra no lote do cluster; a review roda quando todas as tasks do cluster estão `implemented` ou `done`, no diff combinado. Se um dependente de fora do cluster ou um gate espera só por ela, a review do lote roda já.
 - Rode a review no diretório do lote: para uma task, a worktree dela; para um lote, uma worktree de integração com as branches do lote mescladas.
-- `master-review --lean --base <branch da feature> [--roast]`. Os fixers editam o working tree; commite as correções como `fix(review): …`.
+- `master-review --lean --base <branch da feature> --spec <dir>/spec.md [--roast]`. Os fixers editam o working tree; commite as correções como `fix(review): …`.
 - Passou (zero BLOCKER e MAJOR): merge da branch na branch da feature, `devstate.py task-status <dir> <task> done`, `git worktree remove`.
-- MAJOR que os fixers não resolveram, ou revisão visual pendente em task com UI: `task-status blocked`. A task não entra na branch da feature.
+- MAJOR que os fixers não resolveram, revisão visual pendente em task com UI, ou lacuna de especialista: `task-status blocked`. A task não entra na branch da feature.
 - Registre a review: `reviews/<id>.md` e o item em `state.reviews` (via decisão de custo com `agent_role: "review"`).
 
 ## 4. Gate
 
-`devstate.py gate-status <dir> <gate> running` → `master-review --base <base>` (full) em cada repo, na branch da feature → correção → `passed` ou `blocked`. Gate bloqueado vai para o Marcelo; os workers seguem no que não depende dele.
+`devstate.py gate-status <dir> <gate> running` → `master-review --base <base> --spec <dir>/spec.md` (full) em cada repo, na branch da feature → correção → `passed` ou `blocked`. Gate bloqueado vai para o Marcelo; os workers seguem no que não depende dele.
 
 ## 5. Fim da feature
 
 1. Gate final passa.
 2. Mode B da /test-audit no diff da feature, em cada repo.
 3. Mostre o resumo e peça confirmação para push da branch e abertura de 1 MR por repo. Cada MR cita os outros e a ordem de deploy (quem fornece o contrato sobe primeiro).
-4. `devstate.py` marca `phase: done`. A próxima feature da fila começa sem esperar a confirmação, a partir da base, ou da branch da feature de que depende.
+4. Retro: dispare um agente `model: "haiku"`, `effort: "medium"` com `prompts/retro.md`. Ele grava `<dir>/retro.md`. Cada checagem que ele propõe passa pelo nível 1 do ciclo de aprendizado da `code-guard` (`diff_checks.py add-check`, que recusa o que não dispara num erro real). Regras sem efeito e custos viram decisões (`origin: "code-guard"`), sem remoção automática.
+5. `devstate.py phase <dir> done`. A próxima feature da fila começa sem esperar a confirmação, a partir da base, ou da branch da feature de que depende.

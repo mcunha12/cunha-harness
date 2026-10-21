@@ -391,3 +391,15 @@ docs/specs/
 - Implementação da emulação do iPhone SE pelo protocolo do Chrome.
 - Formato exato de `state.json` e `plan.json`.
 - Captura de tokens por agente, se o Claude Code expuser.
+
+## 16. Melhorias de 21/10 (estudo de pstack, mattpocock/skills e addyosmani/agent-skills)
+
+Aceitas pelo Marcelo:
+
+1. Hierarquia de imposição no ciclo de aprendizado: checagem automática (`diff_checks.py add-check`, recusada se não dispara num erro real do ledger) > lint ou tipo do repo (proposto no MR) > texto. Toda regra aprendida diz o que a impõe (`· impõe:`). Regra só de texto que volta a falhar sobe de nível (`escalate`).
+2. Eixo Spec na master-review (`--spec`): requisito faltando, escopo a mais e implementação errada, com a linha da spec, em seção própria.
+3. Checagens determinísticas de régua afrouxada antes do scan (`diff_checks.py run`): supressões sem motivo, teste desligado, cobertura reduzida, lint ou `strict` afrouxado.
+4. Escada de prova (níveis 1 a 5) na verificação. BLOCKER exige nível 4; abaixo disso vira MAJOR "não provado".
+5. Validação das skills sem token (`scripts/validate_skills.py`): frontmatter, arquivos citados e roteamento das descrições contra `tests/routing.json`.
+6. Especialista que falha duas vezes no contrato vira lacuna: o veredito não passa de APROVAR COM RESSALVAS, e no /dev a task bloqueia.
+7. Retro no fim de cada feature (Haiku medium, `prompts/retro.md`): checagens que faltaram, regras sem efeito, custo e navegação.

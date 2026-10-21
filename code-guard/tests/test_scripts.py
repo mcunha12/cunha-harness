@@ -14,6 +14,7 @@ from ledger import identity  # noqa: E402
 
 def finding(severity, verification, category="catch-engolido", agent="review-resiliencia"):
     return {"id": "RES-001", "agent": agent, "severity": severity, "category": category, "verification": verification,
+            "evidence": "catch (e) { return [] }", "proof_level": 2,
             "location": {"repo": "api-bff", "file": "src/x.ts", "lines": "1-2"}, "problem": "erro some"}
 
 
@@ -59,6 +60,20 @@ class LedgerTest(unittest.TestCase):
         self.assertEqual(result[0]["identity"], "review-resiliencia:catch-engolido")
         self.assertTrue(result[0]["domain_loaded"])
 
+    def test_append_keeps_evidence_and_proof_level(self):
+        self.append([finding("MAJOR", "confirmado")], "T1")
+        row = self.lines()[0]
+        self.assertEqual(row["evidence"], "catch (e) { return [] }")
+        self.assertEqual(row["proof_level"], 2)
+
+    def test_trigger_escalates_when_text_rule_already_covered(self):
+        os.makedirs(os.path.join(self.home, "learned"))
+        with open(os.path.join(self.home, "learned", "global.md"), "w") as f:
+            f.write("- [RES] Não engula erro. — origem: review-resiliencia/catch-engolido · ocorrências: 3 · impõe: texto\n")
+        for task in ("T1", "T1", "T2"):
+            self.append([finding("MAJOR", "confirmado")], task)
+        self.assertTrue(self.triggers()[0]["escalate"])
+
     def test_corrupted_line_is_skipped(self):
         self.append([finding("MAJOR", "confirmado")], "T1")
         with open(os.path.join(self.home, "ledger.jsonl"), "a") as f:
@@ -100,6 +115,15 @@ class BudgetTest(unittest.TestCase):
         code, issues = self.check()
         self.assertEqual(code, 1)
         self.assertIn("over_budget", [i["code"] for i in issues])
+
+    def test_learned_rule_needs_enforcement(self):
+        learned = os.path.join(self.root, "learned")
+        os.makedirs(learned)
+        with open(os.path.join(learned, "global.md"), "w") as f:
+            f.write("- [RES] Faz X. — origem: review-resiliencia/catch-engolido · ocorrências: 3\n")
+        result = subprocess.run([sys.executable, os.path.join(SCRIPTS, "check_budget.py"), self.root, "--learned", learned],
+                                capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout)[0]["code"], "missing_enforcement")
 
     def test_budget_missing_origin(self):
         self.write("domains/front.md", ["- [FRT] Faz X."])

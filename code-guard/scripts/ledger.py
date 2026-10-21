@@ -71,6 +71,7 @@ def append(findings, repo, feature, task, loaded):
             "at": now, "repo": repo, "feature": feature, "task": task, "agent": agent, "category": category,
             "identity": identity(agent, category), "severity": item["severity"],
             "file": (item.get("location") or {}).get("file"), "problem": item.get("problem", "")[:200],
+            "evidence": item.get("evidence", "")[:300], "proof_level": item.get("proof_level"),
             "covered_rule": find_rule(agent, category), "domain_loaded": domain in loaded or domain in CORE_DOMAINS})
         written += 1
     return written
@@ -90,8 +91,11 @@ def triggers(threshold=3, min_tasks=2):
         tasks = {(r.get("feature"), r.get("task")) for r in rows}
         if len(rows) >= threshold and len(tasks) >= min_tasks:
             last = rows[-1]
+            covered = find_rule(last["agent"], last["category"]) or last.get("covered_rule")
+            # regra só de texto que volta a falhar sobe para checagem automática
+            escalate = bool(covered) and ("impõe: texto" in covered or "impõe:" not in covered)
             out.append({"identity": ident, "agent": last["agent"], "category": last["category"], "occurrences": rows,
-                        "covered_rule": last.get("covered_rule"), "domain_loaded": last.get("domain_loaded")})
+                        "covered_rule": covered, "domain_loaded": last.get("domain_loaded"), "escalate": escalate})
     return out
 
 

@@ -63,8 +63,8 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 | 3 Avaliação | `model: "opus"`, `effort: "xhigh"`, prompt `prompts/step-3-evaluation.md` |
 | 4 Testes | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-4-tests.md` |
 | 5 Implementação | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-5-implementation.md` |
-| 6 Review lean | Skill `master-review` com `--lean --base <branch da feature> [--roast]` |
-| Gate | Skill `master-review` full com `--base <base>`, uma por repo |
+| 6 Review lean | Skill `master-review` com `--lean --base <branch da feature> --spec <dir>/spec.md [--roast]` |
+| Gate | Skill `master-review` full com `--base <base> --spec <dir>/spec.md`, uma por repo |
 
 `subagent_type: "general-purpose"` e `run_in_background: true` em todos.
 
@@ -76,6 +76,7 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 | `references/pause-resume.md` | `/dev stop` e `/dev resume` |
 | `references/phase-*.md` | as três fases |
 | `prompts/step-*.md` | prompts dos passos 1 a 5 |
+| `prompts/retro.md` | retro do fim da feature (Haiku medium) |
 | `prompts/situation.md` | bloco "Situação agora" do tracker (Haiku medium, só nos marcos) |
 | `scripts/devgraph.py` | `validate`, `analyze`, `next` |
 | `scripts/devstate.py` | estado atômico, checkpoints, logs, hash de leitura |
