@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature Tracker</title>
+<style>
+:root {
+  --bg: #f6f6f4; --surface: #ffffff; --text: #1c1c1a; --muted: #6b6b66; --border: #e2e1dc;
+  --done: #2f7d4f; --done-bg: #e6f2ea;
+  --active: #2459c7; --active-bg: #e7eefb;
+  --wait: #8a5a00; --wait-bg: #fbf1dc;
+  --blocked: #8d8d87; --blocked-bg: #f0efeb;
+  --crit: #c2410c;
+  --gate: #6d28d9; --gate-bg: #f1ebfd;
+  --ca: #0e7490; --cb: #a16207; --cc: #be185d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --surface: #1f1f1d; --text: #ecebe6; --muted: #a09f99; --border: #34332f;
+    --done: #6cc28f; --done-bg: #1c3326; --active: #7fa6f5; --active-bg: #1d2a45;
+    --wait: #e0b25c; --wait-bg: #3a2e14; --blocked: #8d8d87; --blocked-bg: #262624;
+    --crit: #fb923c; --gate: #b69cf7; --gate-bg: #2a2140;
+    --ca: #4fc3d9; --cb: #e0b25c; --cc: #f472b6;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --surface: #1f1f1d; --text: #ecebe6; --muted: #a09f99; --border: #34332f;
+  --done: #6cc28f; --done-bg: #1c3326; --active: #7fa6f5; --active-bg: #1d2a45;
+  --wait: #e0b25c; --wait-bg: #3a2e14; --blocked: #8d8d87; --blocked-bg: #262624;
+  --crit: #fb923c; --gate: #b69cf7; --gate-bg: #2a2140;
+  --ca: #4fc3d9; --cb: #e0b25c; --cc: #f472b6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.mock-tag { display: inline-block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; padding: 1px 6px; margin-bottom: 8px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+.meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.meta a { color: var(--active); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.kpi .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 12px; color: var(--muted); }
+.bar { height: 6px; background: var(--blocked-bg); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--done); }
+.workers { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.worker { border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; }
+.worker b { font-variant-numeric: tabular-nums; }
+.worker .slot { font-size: 12px; color: var(--muted); grid-row: span 2; }
+.worker .step { font-size: 12px; color: var(--muted); }
+.steps { display: flex; gap: 3px; margin-top: 6px; grid-column: 2; }
+.steps i { flex: 1; height: 5px; border-radius: 2px; background: var(--blocked-bg); }
+.steps i.d { background: var(--done); }
+.steps i.a { background: var(--active); }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.p-done { color: var(--done); background: var(--done-bg); }
+.p-active { color: var(--active); background: var(--active-bg); }
+.p-wait { color: var(--wait); background: var(--wait-bg); }
+.p-blocked { color: var(--blocked); background: var(--blocked-bg); }
+.p-gate { color: var(--gate); background: var(--gate-bg); }
+.cl { font-weight: 600; }
+.cl-a { color: var(--ca); } .cl-b { color: var(--cb); } .cl-c { color: var(--cc); }
+.graph-wrap { display: grid; grid-template-columns: 1fr; gap: 14px; }
+svg.dag { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+svg.dag text { font-family: inherit; fill: var(--text); }
+svg.dag .sub { fill: var(--muted); font-size: 9.5px; }
+svg.dag .ttl { font-size: 11.5px; font-weight: 600; }
+.e { fill: none; stroke: var(--border); stroke-width: 1.5; }
+.e.c { stroke: var(--crit); stroke-width: 2.4; }
+.n-done { fill: var(--done-bg); stroke: var(--done); }
+.n-active { fill: var(--active-bg); stroke: var(--active); }
+.n-wait { fill: var(--wait-bg); stroke: var(--wait); }
+.n-blocked { fill: var(--blocked-bg); stroke: var(--blocked); stroke-dasharray: 3 3; }
+.n-gate { fill: var(--gate-bg); stroke: var(--gate); stroke-width: 1.5; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.line { width: 18px; height: 0; border-top: 2.4px solid var(--crit); display: inline-block; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+td.n { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+ul.plain { list-style: none; margin: 0; padding: 0; }
+ul.plain li { padding: 8px 0; border-bottom: 1px solid var(--border); }
+ul.plain li:last-child { border-bottom: 0; }
+.src { font-size: 12px; color: var(--muted); }
+.two { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+@media (max-width: 719px) {
+  table.resp thead { display: none; }
+  table.resp tr { display: block; border-bottom: 1px solid var(--border); padding: 8px 0; }
+  table.resp td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 3px 0; }
+  table.resp td::before { content: attr(data-l); color: var(--muted); font-size: 12px; }
+  table.resp td.first { font-weight: 600; }
+  table.resp td.first::before { content: none; }
+}
+@media (min-width: 720px) {
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .workers { grid-template-columns: repeat(2, 1fr); }
+  .two { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1100px) {
+  .graph-wrap { grid-template-columns: 420px 1fr; align-items: start; }
+  .workers { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+<main>
+  <span class="mock-tag">mockup · dados de exemplo</span>
+  <h1>Lembrete de aula ao vivo por e-mail</h1>
+  <div class="meta">
+    <span><span class="pill p-active">em andamento</span></span>
+    <span>branch <code>feat/lembrete-aula</code></span>
+    <span>fonte: <a href="#">PROJ-412 (Jira)</a> · <a href="#">épico (Notion)</a></span>
+    <span>checkpoint 14:32 · T3 passo 4 concluído</span>
+    <span>pausar: <code>/dev stop</code></span>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">1 / 8</div><div class="l">tasks concluídas</div><div class="bar"><i style="width:12.5%"></i></div></div>
+    <div class="kpi"><div class="v">4 / 4</div><div class="l">workers ativos</div></div>
+    <div class="kpi"><div class="v">1 / 2</div><div class="l">processos pesados</div></div>
+    <div class="kpi"><div class="v">0 / 2</div><div class="l">gates passados</div></div>
+  </div>
+
+  <section class="card">
+    <h2>Workers agora</h2>
+    <div class="workers">
+      <div class="worker"><span class="slot">W1</span><b>T3 · Job de lembretes</b><span class="step">passo 5 · implementação · Sonnet medium</span><div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="a"></i><i></i></div></div>
+      <div class="worker"><span class="slot">W2</span><b>T5 · Envio pelo provedor</b><span class="step">passo 2 · leitura antecipada · Haiku medium</span><div class="steps"><i></i><i class="a"></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="worker"><span class="slot">W3</span><b>T6 · Tela de preferências</b><span class="step">passo 2 · leitura antecipada · Haiku medium</span><div class="steps"><i></i><i class="a"></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="worker"><span class="slot">W4</span><b>T7 · Toggle na página da aula</b><span class="step">passo 2 · leitura antecipada · Haiku medium</span><div class="steps"><i></i><i class="a"></i><i></i><i></i><i></i><i></i></div></div>
+    </div>
+    <p class="src" style="margin:10px 0 0">Passos: 1 escopo · 2 leitura · 3 avaliação · 4 testes · 5 implementação · 6 review lean</p>
+  </section>
+
+  <section class="card">
+    <h2>Grafo</h2>
+    <div class="graph-wrap">
+      <div>
+        <svg class="dag" viewBox="0 0 340 660" role="img" aria-label="Grafo de dependências das tasks">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker>
+            <marker id="arc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--crit)"/></marker>
+          </defs>
+          <path class="e" d="M60 84 L60 118" marker-end="url(#ar)"/>
+          <path class="e c" d="M60 84 C60 102,170 100,170 118" marker-end="url(#arc)"/>
+          <path class="e" d="M280 84 L280 218" marker-end="url(#ar)"/>
+          <path class="e c" d="M170 184 C170 204,280 198,280 218" marker-end="url(#arc)"/>
+          <path class="e" d="M60 184 C60 270,110 290,120 318" marker-end="url(#ar)"/>
+          <path class="e c" d="M280 284 C280 302,225 300,215 318" marker-end="url(#arc)"/>
+          <path class="e c" d="M140 364 C140 382,60 380,60 398" marker-end="url(#arc)"/>
+          <path class="e" d="M200 364 C200 382,280 380,280 398" marker-end="url(#ar)"/>
+          <path class="e c" d="M60 464 C60 484,150 480,155 498" marker-end="url(#arc)"/>
+          <path class="e" d="M280 464 C280 484,190 480,185 498" marker-end="url(#ar)"/>
+          <path class="e c" d="M170 564 L170 598" marker-end="url(#arc)"/>
+
+          <rect class="n-done" x="10" y="20" width="100" height="64" rx="8"/>
+          <text x="20" y="36" class="sub">T1 · <tspan class="cl-a" style="fill:var(--ca)">A</tspan> · risco 5</text>
+          <text x="20" y="54" class="ttl">Tabela de</text><text x="20" y="70" class="ttl">preferências</text>
+
+          <rect class="n-wait" x="230" y="20" width="100" height="64" rx="8"/>
+          <text x="240" y="36" class="sub">T4 · <tspan style="fill:var(--cb)">B</tspan> · risco 1</text>
+          <text x="240" y="54" class="ttl">Template</text><text x="240" y="70" class="ttl">de e-mail</text>
+
+          <rect class="n-wait" x="10" y="120" width="100" height="64" rx="8"/>
+          <text x="20" y="136" class="sub">T2 · <tspan style="fill:var(--ca)">A</tspan> · risco 3</text>
+          <text x="20" y="154" class="ttl">Endpoint</text><text x="20" y="170" class="ttl">preferências</text>
+
+          <rect class="n-active" x="120" y="120" width="100" height="64" rx="8"/>
+          <text x="130" y="136" class="sub">T3 · <tspan style="fill:var(--ca)">A</tspan> · risco 3</text>
+          <text x="130" y="154" class="ttl">Job de</text><text x="130" y="170" class="ttl">lembretes</text>
+
+          <rect class="n-blocked" x="230" y="220" width="100" height="64" rx="8"/>
+          <text x="240" y="236" class="sub">T5 · <tspan style="fill:var(--cb)">B</tspan> · risco 3</text>
+          <text x="240" y="254" class="ttl">Envio pelo</text><text x="240" y="270" class="ttl">provedor</text>
+
+          <rect class="n-gate" x="70" y="320" width="200" height="44" rx="22"/>
+          <text x="170" y="338" class="ttl" text-anchor="middle" style="fill:var(--gate)">GATE 1 · backend fechado</text>
+          <text x="170" y="353" class="sub" text-anchor="middle">/master-review full</text>
+
+          <rect class="n-blocked" x="10" y="400" width="100" height="64" rx="8"/>
+          <text x="20" y="416" class="sub">T6 · <tspan style="fill:var(--cc)">C</tspan> · risco 2</text>
+          <text x="20" y="434" class="ttl">Tela de</text><text x="20" y="450" class="ttl">preferências</text>
+
+          <rect class="n-blocked" x="230" y="400" width="100" height="64" rx="8"/>
+          <text x="240" y="416" class="sub">T7 · <tspan style="fill:var(--cc)">C</tspan> · risco 2</text>
+          <text x="240" y="434" class="ttl">Toggle na</text><text x="240" y="450" class="ttl">página da aula</text>
+
+          <rect class="n-blocked" x="120" y="500" width="100" height="64" rx="8"/>
+          <text x="130" y="516" class="sub">T8 · <tspan style="fill:var(--cc)">C</tspan> · risco 2</text>
+          <text x="130" y="534" class="ttl">Eventos de</text><text x="130" y="550" class="ttl">analytics</text>
+
+          <rect class="n-gate" x="70" y="600" width="200" height="44" rx="22"/>
+          <text x="170" y="618" class="ttl" text-anchor="middle" style="fill:var(--gate)">GATE 2 · feature completa</text>
+          <text x="170" y="633" class="sub" text-anchor="middle">/master-review full + MR</text>
+        </svg>
+      </div>
+      <div>
+        <div class="legend">
+          <span><i class="sw" style="border-color:var(--done);background:var(--done-bg)"></i>concluída</span>
+          <span><i class="sw" style="border-color:var(--active);background:var(--active-bg)"></i>em andamento</span>
+          <span><i class="sw" style="border-color:var(--wait);background:var(--wait-bg)"></i>aguarda review do cluster</span>
+          <span><i class="sw" style="border-color:var(--blocked);background:var(--blocked-bg);border-style:dashed"></i>bloqueada</span>
+          <span><i class="line"></i>caminho crítico (custo 48)</span>
+        </div>
+        <h2 style="margin-top:16px">Clusters de afinidade (MST)</h2>
+        <ul class="plain">
+          <li><span class="cl cl-a">A · banco e agendamento</span> — T1, T2, T3<br><span class="src">T1 tem risco 5: review sozinha. T2 e T3: review lean única quando T3 fechar.</span></li>
+          <li><span class="cl cl-b">B · e-mail</span> — T4, T5<br><span class="src">Review lean única quando T5 fechar.</span></li>
+          <li><span class="cl cl-c">C · front</span> — T6, T7, T8<br><span class="src">Review lean única quando T8 fechar. Mesmo worker em sequência.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Tasks</h2>
+    <table class="resp">
+      <thead><tr><th>Task</th><th>Cluster</th><th>Compl.</th><th>Risco</th><th>Custo</th><th>Caminho à frente</th><th>Depende de</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="first">T1 · Tabela de preferências</td><td data-l="Cluster"><span class="cl cl-a">A</span></td><td class="n" data-l="Compl.">3</td><td class="n" data-l="Risco">5</td><td class="n" data-l="Custo">15</td><td class="n" data-l="Caminho à frente">48</td><td data-l="Depende de">—</td><td data-l="Status"><span class="pill p-done">concluída</span></td></tr>
+        <tr><td class="first">T4 · Template de e-mail</td><td data-l="Cluster"><span class="cl cl-b">B</span></td><td class="n" data-l="Compl.">2</td><td class="n" data-l="Risco">1</td><td class="n" data-l="Custo">2</td><td class="n" data-l="Caminho à frente">23</td><td data-l="Depende de">—</td><td data-l="Status"><span class="pill p-wait">aguarda cluster B</span></td></tr>
+        <tr><td class="first">T3 · Job de lembretes</td><td data-l="Cluster"><span class="cl cl-a">A</span></td><td class="n" data-l="Compl.">4</td><td class="n" data-l="Risco">3</td><td class="n" data-l="Custo">12</td><td class="n" data-l="Caminho à frente">33</td><td data-l="Depende de">T1</td><td data-l="Status"><span class="pill p-active">passo 5</span></td></tr>
+        <tr><td class="first">T2 · Endpoint preferências</td><td data-l="Cluster"><span class="cl cl-a">A</span></td><td class="n" data-l="Compl.">3</td><td class="n" data-l="Risco">3</td><td class="n" data-l="Custo">9</td><td class="n" data-l="Caminho à frente">21</td><td data-l="Depende de">T1</td><td data-l="Status"><span class="pill p-wait">aguarda cluster A</span></td></tr>
+        <tr><td class="first">T5 · Envio pelo provedor</td><td data-l="Cluster"><span class="cl cl-b">B</span></td><td class="n" data-l="Compl.">3</td><td class="n" data-l="Risco">3</td><td class="n" data-l="Custo">9</td><td class="n" data-l="Caminho à frente">21</td><td data-l="Depende de">T3, T4</td><td data-l="Status"><span class="pill p-blocked">leitura antecipada</span></td></tr>
+        <tr><td class="first">T6 · Tela de preferências</td><td data-l="Cluster"><span class="cl cl-c">C</span></td><td class="n" data-l="Compl.">4</td><td class="n" data-l="Risco">2</td><td class="n" data-l="Custo">8</td><td class="n" data-l="Caminho à frente">12</td><td data-l="Depende de">Gate 1</td><td data-l="Status"><span class="pill p-blocked">leitura antecipada</span></td></tr>
+        <tr><td class="first">T7 · Toggle na página da aula</td><td data-l="Cluster"><span class="cl cl-c">C</span></td><td class="n" data-l="Compl.">2</td><td class="n" data-l="Risco">2</td><td class="n" data-l="Custo">4</td><td class="n" data-l="Caminho à frente">8</td><td data-l="Depende de">Gate 1</td><td data-l="Status"><span class="pill p-blocked">leitura antecipada</span></td></tr>
+        <tr><td class="first">T8 · Eventos de analytics</td><td data-l="Cluster"><span class="cl cl-c">C</span></td><td class="n" data-l="Compl.">2</td><td class="n" data-l="Risco">2</td><td class="n" data-l="Custo">4</td><td class="n" data-l="Caminho à frente">4</td><td data-l="Depende de">T6, T7</td><td data-l="Status"><span class="pill p-blocked">bloqueada</span></td></tr>
+      </tbody>
+    </table>
+    <p class="src" style="margin:10px 0 0">Custo = complexidade × risco (1 a 5 cada). Caminho à frente = custo da task + a cadeia mais cara depois dela. Entre as prontas, o maior caminho pega worker primeiro.</p>
+  </section>
+
+  <section class="card">
+    <h2>Gates</h2>
+    <ul class="plain">
+      <li><span class="pill p-gate">Gate 1</span> <b>backend fechado</b> — espera T2 e T5<br><span class="src">Contrato do endpoint congelado antes do front. /master-review full no diff de T1 a T5.</span></li>
+      <li><span class="pill p-gate">Gate 2</span> <b>feature completa</b> — espera T8<br><span class="src">/master-review full na feature inteira + /test-audit modo B. Depois, MR.</span></li>
+    </ul>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <h2>Decisões</h2>
+      <ul class="plain">
+        <li>D1 · O lembrete sai 30 min antes da aula.<br><span class="src">origem: sua resposta, rodada 1</span></li>
+        <li>D2 · A preferência é por aluno e vale para todas as turmas.<br><span class="src">origem: épico no Notion</span></li>
+        <li>D3 · O envio usa o client de e-mail que já existe em <code>src/notifications</code>.<br><span class="src">origem: código (recon)</span></li>
+        <li>D4 · T2 e T3 passam por uma só review lean no cluster A.<br><span class="src">origem: agendador</span></li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>Aprendizado (/code-guard)</h2>
+      <ul class="plain">
+        <li><b>RES · catch que engole erro</b> — 3 ocorrências em 2 tasks<br><span class="src">regra reescrita no núcleo, com as 3 ocorrências como exemplo · 2 em T1, 1 numa feature anterior</span></li>
+      </ul>
+      <h2 style="margin-top:14px">Custo até agora</h2>
+      <table>
+        <thead><tr><th>Item</th><th style="text-align:right">Tokens</th></tr></thead>
+        <tbody>
+          <tr><td>Opus (escopo + avaliação)</td><td class="n" style="text-align:right">212k</td></tr>
+          <tr><td>Haiku (leitura)</td><td class="n" style="text-align:right">96k</td></tr>
+          <tr><td>Sonnet (testes + implementação)</td><td class="n" style="text-align:right">174k</td></tr>
+          <tr><td>Review lean T1 (sozinha)</td><td class="n" style="text-align:right">58k</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</main>
+</body>
+</html>
