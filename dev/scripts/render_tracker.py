@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import devgraph  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-STEP_NAMES = {1: ("escopo", "Opus xhigh"), 2: ("leitura", "Haiku medium"), 3: ("avaliação", "Opus xhigh"),
+STEP_NAMES = {1: ("escopo", "Opus"), 2: ("leitura", "Haiku medium"), 3: ("avaliação", "Opus"),
               4: ("testes", "Sonnet medium"), 5: ("implementação", "Sonnet medium"), 6: ("review lean", "master-review")}
 PHASES = {"requirements": "requisitos", "planning": "planejamento", "execution": "em andamento",
           "paused": "pausada", "done": "concluída"}
@@ -163,11 +163,17 @@ def _workers(state, tasks):
             tid = a["task"]
             ts = state.get("tasks", {}).get(tid, {})
             step = ts.get("step_running") or a.get("from_step") or (a.get("steps") or [1])[0]
-            name, model = STEP_NAMES.get(step, ("?", "?"))
+            effort = tasks.get(tid, {}).get("opus_effort", "medium")
+
+            def model_of(n):
+                model = STEP_NAMES.get(n, ("?", "?"))[1]
+                return f"{model} {effort}" if model == "Opus" else model
+
+            name, model = STEP_NAMES.get(step, ("?", "?"))[0], model_of(step)
             if kind == "pre_read":
                 steps = a.get("steps") or [1, 2]
                 step = steps[-1]
-                name, model = "leitura antecipada", " + ".join(STEP_NAMES[n][1] for n in steps)
+                name, model = "leitura antecipada", " + ".join(model_of(n) for n in steps)
             title = f"{tid} · {tasks.get(tid, {}).get('title', '')}"
             done = set(ts.get("steps_done", []))
             bars = "".join(f'<i class="{"d" if n in done else "a" if n == step else ""}"></i>' for n in range(1, 7))

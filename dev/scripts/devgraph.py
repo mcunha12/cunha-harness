@@ -69,6 +69,9 @@ def _find_cycles(deps):
     return cycles
 
 
+OPUS_EFFORTS = ("medium", "xhigh")
+
+
 def task_cost(task):
     if "waits_for" in task:
         return 0
@@ -85,6 +88,8 @@ def validate(plan):
             value = t.get(field)
             if not isinstance(value, int) or not 1 <= value <= 5:
                 errors.append({"code": "invalid_score", "task": tid, "field": field})
+        if t.get("opus_effort", "medium") not in OPUS_EFFORTS:
+            errors.append({"code": "invalid_opus_effort", "task": tid})
     for node, ds in deps.items():
         for d in ds:
             if d not in deps:

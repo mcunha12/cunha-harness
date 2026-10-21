@@ -58,13 +58,15 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 
 | Passo | Agent tool |
 |---|---|
-| 1 Escopo | `model: "opus"`, `effort: "xhigh"`, prompt `prompts/step-1-scope.md` |
+| 1 Escopo | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-1-scope.md` |
 | 2 Leitura | swarm de até 3 agentes `model: "haiku"`, `effort: "medium"`, prompt `prompts/step-2-reading.md` |
-| 3 Avaliação | `model: "opus"`, `effort: "xhigh"`, prompt `prompts/step-3-evaluation.md` |
+| 3 Avaliação | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-3-evaluation.md` |
 | 4 Testes | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-4-tests.md` |
 | 5 Implementação | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-5-implementation.md` |
 | 6 Review lean | Skill `master-review` com `--lean --base <branch da feature> --spec <dir>/spec.md [--roast]` |
 | Gate | Skill `master-review` full com `--base <base> --spec <dir>/spec.md`, uma por repo |
+
+`opus_effort` vale `medium` por padrão e `xhigh` só na task que a fase 2 marcou como grande ou com muitas regras.
 
 `subagent_type: "general-purpose"` e `run_in_background: true` em todos.
 

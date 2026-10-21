@@ -27,7 +27,7 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
   "tasks": [
     {"id": "T1", "title": "Tabela de preferências", "description": "…", "done_when": "…",
      "repo": "api-bff", "files_hint": ["db/migrations/001.sql"], "read_list": ["src/reminders/"],
-     "complexity": 3, "risk": 5, "depends_on": [], "changes_behavior": true, "has_ui": false}
+     "complexity": 3, "risk": 5, "opus_effort": "medium", "depends_on": [], "changes_behavior": true, "has_ui": false}
   ],
   "gates": [{"id": "G1", "title": "backend fechado", "waits_for": ["T2", "T5"]}],
   "analysis": {"costs": {}, "path_ahead": {}, "critical_path": [], "clusters": {}, "task_cluster": {}}
@@ -36,6 +36,7 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 
 - Task depois de um gate leva o id do gate em `depends_on`.
 - Uma task toca um repo só.
+- `opus_effort`: `medium` (padrão, pode faltar) ou `xhigh`. Vale para os passos 1 e 3.
 
 ## state.json
 
