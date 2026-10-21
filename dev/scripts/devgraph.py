@@ -307,7 +307,8 @@ def next_assignments(plan, state, free_slots):
             out.append({"kind": "gate", "gate": gid})
 
     busy_files = set()
-    for tid in busy_tasks:
+    assigned = {a["task"] for a in out[:free_slots] if a["kind"] == "task"}
+    for tid in busy_tasks | assigned:
         if tid in tasks:
             busy_files |= set(tasks[tid].get("files_hint", []))
     for tid in by_priority:

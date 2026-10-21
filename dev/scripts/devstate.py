@@ -108,8 +108,18 @@ def set_worker(state, slot, assignment):
     return s
 
 
+def set_phase(state, phase):
+    s = copy.deepcopy(state)
+    s["phase"] = phase
+    return _checkpoint(s, f"fase: {phase}")
+
+
 def pause(state, reason):
     s = copy.deepcopy(state)
+    for ts in s["tasks"].values():
+        ts["step_running"] = None
+    for w in s["workers"]:
+        w["assignment"], w["started_at"] = None, None
     s["paused"] = {"at": _now(), "reason": reason, "phase_before": s["phase"]}
     s["phase"] = "paused"
     return _checkpoint(s, f"pausada: {reason}")
@@ -167,6 +177,7 @@ USAGE = """uso: devstate.py <op> <feature_dir> ...
   task-status <dir> <task> <status> [reason]
   gate-status <dir> <gate> <status> [report]
   worker <dir> <slot> <assignment-json|null>
+  phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
   decision <dir> <json> | cost <dir> <json>
   hash <repo_path> <file>... | stale <repo_path> <hashes.json>"""
@@ -204,6 +215,8 @@ def main(argv):
         state = set_gate_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
     elif op == "worker":
         state = set_worker(state, int(args[0]), json.loads(args[1]))
+    elif op == "phase":
+        state = set_phase(state, args[0])
     elif op == "pause":
         state = pause(state, args[0] if args else "stop")
     elif op == "resume":

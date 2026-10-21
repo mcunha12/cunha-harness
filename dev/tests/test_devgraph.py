@@ -181,6 +181,15 @@ class SchedulerTest(unittest.TestCase):
         tasks = [a["task"] for a in next_assignments(self.plan, state, 4) if a["kind"] == "task"]
         self.assertLess(tasks.index("T3"), tasks.index("T2"))
 
+    def test_pre_read_skips_files_of_task_assigned_in_same_batch(self):
+        plan = copy.deepcopy(self.plan)
+        plan["tasks"][1]["files_hint"] = list(plan["tasks"][0]["files_hint"])
+        plan["analysis"] = {}
+        state = self.fresh_state()
+        out = next_assignments(plan, state, 4)
+        self.assertIn({"kind": "task", "task": "T1", "from_step": 1, "stack_on": None}, out)
+        self.assertNotIn("T2", [a.get("task") for a in out if a["kind"] == "pre_read"])
+
     def test_no_slots(self):
         self.assertEqual(next_assignments(self.plan, self.state, 0), [])
 

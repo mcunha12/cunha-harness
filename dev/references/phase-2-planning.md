@@ -1,6 +1,6 @@
 # Fase 2 — Plano da feature
 
-Roda quando a feature começa. A camada de código envelhece, então nunca roda antes.
+Roda quando a feature começa: `devstate.py phase <dir> planning`. A camada de código envelhece, então nunca roda antes.
 
 ## 1. Revalidação
 
@@ -55,4 +55,4 @@ O `analyze` grava custos, caminho à frente, caminho crítico e clusters (MST so
 
 ## 5. Publicar
 
-Crie as branches da feature (`feat/<slug>`) em cada repo a partir da base, registre em `state.json`, gere o tracker e imprima o caminho do `tracker.html`. A execução começa sem esperar aprovação.
+Crie as branches da feature (`feat/<slug>`) em cada repo a partir da base, registre em `state.json`, gere o tracker e imprima o caminho do `tracker.html`. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.

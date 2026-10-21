@@ -49,6 +49,18 @@ class DevstateTest(unittest.TestCase):
         self.assertEqual(s["phase"], "execution")
         self.assertIsNone(s["paused"])
 
+    def test_set_phase(self):
+        s = devstate.set_phase(self.state, "execution")
+        self.assertEqual(s["phase"], "execution")
+        self.assertEqual(devstate.resume(devstate.pause(s, "stop"))["phase"], "execution")
+
+    def test_pause_clears_running_steps_and_workers(self):
+        self.state["phase"] = "execution"
+        s = devstate.step_started(self.state, "T3", 4, 1)
+        s = devstate.pause(s, "stop")
+        self.assertIsNone(s["tasks"]["T3"]["step_running"])
+        self.assertTrue(all(w["assignment"] is None for w in s["workers"]))
+
     def test_stale_files(self):
         with open(os.path.join(self.tmp, "a.txt"), "w") as f:
             f.write("1")
