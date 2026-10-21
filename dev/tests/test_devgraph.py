@@ -8,7 +8,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 
 from devgraph import (affinity_clusters, critical_path, jaccard_distance, next_assignments,  # noqa: E402
-                      path_ahead, task_cost, validate)
+                      path_ahead, required_steps, task_cost, validate)
 
 
 def load_fixture(name):
@@ -143,9 +143,7 @@ class SchedulerTest(unittest.TestCase):
         self.assertEqual(next_assignments(self.plan, self.state, 3),
                          [{"kind": "merge", "task": "T2"},
                           {"kind": "merge", "task": "T4"},
-                          {"kind": "pre_read", "task": "T5", "steps": [1]},
-                          {"kind": "pre_read", "task": "T6", "steps": [1]},
-                          {"kind": "pre_read", "task": "T7", "steps": [1]}])
+                          {"kind": "pre_read", "task": "T6", "steps": [1]}])
 
     def test_low_risk_implemented_is_merged_without_lean_review(self):
         state = copy.deepcopy(self.state)
@@ -186,7 +184,7 @@ class SchedulerTest(unittest.TestCase):
         plan["tasks"][0]["risk"] = 3
         state = self.fresh_state()
         set_task(state, "T1", "implemented")
-        self.assertIn({"kind": "task", "task": "T2", "from_step": 1, "stack_on": "T1"},
+        self.assertIn({"kind": "task", "task": "T2", "from_step": 2, "stack_on": "T1"},
                       next_assignments(plan, state, 4))
 
     def test_priority_by_path_ahead(self):
@@ -201,8 +199,22 @@ class SchedulerTest(unittest.TestCase):
         plan["analysis"] = {}
         state = self.fresh_state()
         out = next_assignments(plan, state, 4)
-        self.assertIn({"kind": "task", "task": "T1", "from_step": 1, "stack_on": None}, out)
+        self.assertIn({"kind": "task", "task": "T1", "from_step": 2, "stack_on": None}, out)
         self.assertNotIn("T2", [a.get("task") for a in out if a["kind"] == "pre_read"])
+
+    def test_small_task_has_no_separate_scope_step(self):
+        small = {"complexity": 3, "changes_behavior": True}
+        self.assertEqual(required_steps(small), [2, 3, 4, 5])
+        self.assertEqual(required_steps({**small, "changes_behavior": False}), [2, 3, 5])
+
+    def test_large_task_keeps_scope_step(self):
+        self.assertEqual(required_steps({"complexity": 4, "changes_behavior": True}), [1, 2, 3, 4, 5])
+
+    def test_small_future_task_gets_no_pre_read(self):
+        state = self.fresh_state()
+        out = next_assignments(self.plan, state, 4)
+        pre = [a["task"] for a in out if a["kind"] == "pre_read"]
+        self.assertTrue(all(next(t for t in self.plan["tasks"] if t["id"] == tid)["complexity"] >= 4 for tid in pre))
 
     def test_no_slots_still_merges(self):
         self.assertEqual(next_assignments(self.plan, self.state, 0),

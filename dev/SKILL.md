@@ -27,7 +27,8 @@ A sessão principal é o orquestrador. Ela guarda estado, chama os scripts e dis
 5. Todo estado passa por `scripts/devstate.py`. Nunca edite `state.json` à mão.
 6. Todo comando pesado (`tsc`, testes, build, navegador, `npm install`) passa por `scripts/heavy_lock.sh`.
 7. Push e abertura de MR pedem confirmação do Marcelo.
-8. O orquestrador manda no andamento. Ele nunca devolve "rode /dev resume" ao Marcelo: a feature na fila começa sozinha quando a que ela espera fecha. Decisão de como fazer (layout, nome de componente, ordem de tasks) é dele e vai ao Marcelo em uma linha, sem pedir confirmação. Ao Marcelo vai só o que muda o quê (escopo, regra de negócio, dado).
+8. Ao Marcelo vão só os marcos: task `done` ou `blocked`, gate com status novo, decisão que muda o quê, pedido de confirmação. Notificação de especialista ou de passo não vira mensagem: ela vai para o estado e para o tracker.
+9. O orquestrador manda no andamento. Ele nunca devolve "rode /dev resume" ao Marcelo: a feature na fila começa sozinha quando a que ela espera fecha. Decisão de como fazer (layout, nome de componente, ordem de tasks) é dele e vai ao Marcelo em uma linha, sem pedir confirmação. Ao Marcelo vai só o que muda o quê (escopo, regra de negócio, dado).
 
 ## 3. Fluxo
 
@@ -66,13 +67,13 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 
 | Passo | Agent tool |
 |---|---|
-| 1 Escopo | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-1-scope.md` |
+| 1 Escopo (só complexidade 4 e 5) | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-1-scope.md` |
 | 2 Leitura | swarm de até 3 agentes `model: "haiku"`, `effort: "medium"`, prompt `prompts/step-2-reading.md` |
-| 3 Avaliação | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-3-evaluation.md` |
+| 3 Avaliação | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-3-evaluation.md`. Em complexidade até 3 ele também grava o `scope.md` |
 | 4 Testes | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-4-tests.md` |
 | 5 Implementação | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-5-implementation.md` |
 | 6 Review lean (só risco 4 e 5) | Skill `master-review` com `--lean --base <branch da feature> --spec <dir>/spec.md --roast --only <até 5 especialistas>` |
-| Gate | Skill `master-review` full com `--base <base> --spec <dir>/spec.md`, uma por repo |
+| Gate | Skill `master-review` full com `--base <base> --spec <dir>/spec.md`, uma por repo, no escopo da seção 4 de `references/phase-3-execution.md` |
 
 `opus_effort` vale `medium` por padrão e `xhigh` só na task que a fase 2 marcou como grande ou com muitas regras.
 
@@ -90,6 +91,7 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 | `prompts/situation.md` | bloco "Situação agora" do tracker (Haiku medium, só nos marcos) |
 | `scripts/devgraph.py` | `validate`, `analyze`, `next` |
 | `scripts/devstate.py` | estado atômico, checkpoints, logs, hash de leitura |
+| `scripts/fixture_pii.py` | barra dado pessoal em teste e fixture do diff (e-mail de provedor público, cidade/UF real, nome com sobrenome, telefone fora da faixa fictícia) |
 | `scripts/heavy_lock.sh` | trava global de 2 processos pesados (`DEV_HEAVY_SLOTS`) |
 | `scripts/render_tracker.py` | `tracker.html` a partir do estado |
 | `scripts/tracker_server.py` | servidor local do tracker em `http://localhost:4777` (porta em `DEV_TRACKER_PORT`), atualização ao vivo |

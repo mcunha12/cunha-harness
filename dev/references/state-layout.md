@@ -53,12 +53,13 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
   "workers": [{"slot": 1, "assignment": null, "started_at": null}],
   "reviews": [{"id": "R1", "kind": "lean | full", "tasks": ["T1"], "report": "reviews/R1.md", "tokens": null}],
   "checkpoint": {"at": "2026-10-21T14:32:00", "note": "T3 passo 4 concluído"},
-  "paused": null
+  "paused": null,
+  "baseline_failures": ["src/test/a.test.ts > caso"]
 }
 ```
 
 - `implemented` = passos obrigatórios concluídos, sem review. `done` = a task entrou na branch da feature: depois da review lean (risco 4 e 5) ou direto (risco 1 a 3).
-- Passos obrigatórios: 1, 2, 3, 4, 5; sem o 4 quando `changes_behavior` é falso.
+- Passos obrigatórios: 1, 2, 3, 4, 5; sem o 1 quando a complexidade é até 3; sem o 4 quando `changes_behavior` é falso.
 
 ## Logs
 
@@ -78,7 +79,7 @@ Senha só por variável de ambiente. Nunca grave senha no arquivo.
 
 ```
 devstate.py init <dir> <feature> <repos.json>
-devstate.py step-started <dir> <task> <step> <slot>
+devstate.py step-started <dir> <task> <step> <slot> [--force]   # exit 3 = passo já feito ou rodando
 devstate.py step-done <dir> <task> <step> [output]
 devstate.py task-status <dir> <task> <pending|implemented|done|blocked> [motivo]
 devstate.py gate-status <dir> <gate> <pending|running|passed|blocked> [relatório]
@@ -86,6 +87,7 @@ devstate.py worker <dir> <slot> '<assignment json>' | null
 devstate.py reset-steps <dir> <task> <from_step>
 devstate.py phase <dir> <requirements|planning|execution|done>
 devstate.py pause <dir> <motivo> | resume <dir>
+devstate.py baseline <dir> '<json-list>'
 devstate.py decision <dir> '<json>' | cost <dir> '<json>'
 devstate.py hash <repo_path> <arquivo>... | stale <repo_path> <hashes.json>
 ```

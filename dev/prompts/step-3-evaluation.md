@@ -5,6 +5,10 @@ Escopo: {{feature_dir}}/tasks/{{task_id}}/scope.md
 Leitura: {{feature_dir}}/tasks/{{task_id}}/reading*.md
 Repo: {{repo_path}}
 
+Sem `scope.md` (task de complexidade até 3): antes do plano, grave {{feature_dir}}/tasks/{{task_id}}/scope.md com o que a task entrega, o que fica de fora, o `done_when` observável e as dúvidas ("BLOQUEIO:" só para o que o Marcelo responde).
+
+Leia `baseline_failures` em {{feature_dir}}/state.json: são falhas que já existem na base. Não planeje investigá-las.
+
 Decida e escreva:
 1. Arquivos a criar e a mudar, com a mudança de cada um em uma linha e as assinaturas novas exatas.
 2. Casos de teste de integração ou E2E (spec observável), com o dado real que cada um precisa. Unit test só para função pura de cálculo ou parsing.

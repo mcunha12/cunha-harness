@@ -68,9 +68,17 @@ def _checkpoint(state, note):
     return state
 
 
-def step_started(state, task, step, slot):
+class StepConflict(Exception):
+    pass
+
+
+def step_started(state, task, step, slot, force=False):
     s = copy.deepcopy(state)
-    s["tasks"].setdefault(task, new_task_state())["step_running"] = step
+    ts = s["tasks"].setdefault(task, new_task_state())
+    # Recusa disparar de novo um passo já feito ou rodando: o escopo da T5 rodou duas vezes (ranking-fellowship).
+    if not force and (step in ts["steps_done"] or ts["step_running"] == step):
+        raise StepConflict(f"{task} passo {step} já está {'feito' if step in ts['steps_done'] else 'rodando'}; use --force para refazer")
+    ts["step_running"] = step
     for w in s["workers"]:
         if w["slot"] == slot:
             w["assignment"] = w.get("assignment") or {"kind": "task", "task": task, "from_step": step}
@@ -90,6 +98,12 @@ def step_done(state, task, step, output=None, required=(1, 2, 3, 4, 5)):
     if ts["status"] == "pending" and all(n in ts["steps_done"] for n in required):
         ts["status"] = "implemented"
     return _checkpoint(s, f"{task} passo {step} concluído")
+
+
+def set_baseline(state, failures):
+    s = copy.deepcopy(state)
+    s["baseline_failures"] = list(failures)
+    return _checkpoint(s, f"baseline: {len(failures)} falha(s) que já existem na base")
 
 
 def set_task_status(state, task, status, reason=None):
@@ -205,7 +219,7 @@ def _save(feature_dir, state):
 
 USAGE = """uso: devstate.py <op> <feature_dir> ...
   init <dir> <feature> <repos.json>
-  step-started <dir> <task> <step> <slot>
+  step-started <dir> <task> <step> <slot> [--force]
   step-done <dir> <task> <step> [output]
   task-status <dir> <task> <status> [reason]
   gate-status <dir> <gate> <status> [report]
@@ -214,6 +228,7 @@ USAGE = """uso: devstate.py <op> <feature_dir> ...
   phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
   wait <dir> <dep_feature_dir> | ready <dir>  (exit 0 = pode começar)
+  baseline <dir> <json-list>  (testes que já falham na base)
   decision <dir> <json> | cost <dir> <json>
   hash <repo_path> <file>... | stale <repo_path> <hashes.json>"""
 
@@ -242,7 +257,13 @@ def main(argv):
     if op == "ready":
         return 0 if is_ready(state) else 1
     if op == "step-started":
-        state = step_started(state, args[0], int(args[1]), int(args[2]))
+        try:
+            state = step_started(state, args[0], int(args[1]), int(args[2]), force="--force" in args[3:])
+        except StepConflict as exc:
+            print(exc, file=sys.stderr)
+            return 3
+    elif op == "baseline":
+        state = set_baseline(state, json.loads(args[0]))
     elif op == "step-done":
         state = step_done(state, args[0], int(args[1]), args[2] if len(args) > 2 else None,
                           required=_required_for(target, args[0]))

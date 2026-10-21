@@ -212,8 +212,17 @@ def analyze(plan):
 HIGH_RISK = 4
 
 
+# Até esta complexidade o passo 3 também escreve o escopo: dois Opus relendo os mesmos arquivos custaram 190 mil tokens por task (ranking-fellowship, 21/10/2026).
+SCOPE_MERGED_UP_TO = 3
+
+
 def required_steps(task):
-    return [1, 2, 3, 5] if not task.get("changes_behavior", True) else [1, 2, 3, 4, 5]
+    steps = [1, 2, 3, 4, 5]
+    if task.get("complexity", 5) <= SCOPE_MERGED_UP_TO:
+        steps.remove(1)
+    if not task.get("changes_behavior", True):
+        steps.remove(4)
+    return steps
 
 
 def _in_flight(state):
@@ -293,7 +302,7 @@ def next_assignments(plan, state, free_slots):
             continue
         done = set(tstate.get(tid, {}).get("steps_done", []))
         # Leitura de código com dependência aberta envelhece antes do passo 3: só o escopo adianta.
-        steps = [n for n in (1,) if n not in done]
+        steps = [n for n in (1,) if n not in done and n in required_steps(tasks[tid])]
         if steps and not (set(tasks[tid].get("files_hint", [])) & busy_files):
             out.append({"kind": "pre_read", "task": tid, "steps": steps})
     return merges + out[:max(free_slots, 0)]
