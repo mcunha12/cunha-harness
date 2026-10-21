@@ -24,6 +24,9 @@ Quando um tema cai na fronteira, o dono reporta e os outros só referenciam via 
 | Instrumentação de chamadas LLM (tokens, latência) | review-observabilidade | review-ia |
 | DDL, locks, backfill, expand/contract | review-migrations | review-queries |
 | Comentários | review-comentarios | todos |
+| Conformidade com padrão do repo, escalabilidade, dependência ou padrão novo, tamanho da solução | review-arquitetura | review-modularidade, review-clean |
+| Usabilidade, caminho A→B até o job to be done, carga cognitiva | review-ux | review-a11y, review-front |
+| Qualquer tema (crítica externa) | dono do tema | review-roast só co-assina |
 | Testes | test-audit (existente) | todos |
 
 Tema ausente da tabela: o agente cujo `description` cobre o tema de forma mais estreita é o dono. Empate: o orquestrador decide e registra.

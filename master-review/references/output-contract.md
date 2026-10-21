@@ -49,7 +49,7 @@ O orquestrador lê só o JSON. O markdown serve ao uso standalone.
 
 Regras de preenchimento:
 
-- `id`: prefixo do agente + número sequencial. Prefixos: DRY, CLN, MOD, FRT, A11Y, CTR, TIP, LEG, QRY, SEG, COM, RES, OBS, IA, MIG, TST.
+- `id`: prefixo do agente + número sequencial. Prefixos: DRY, CLN, MOD, FRT, A11Y, CTR, TIP, LEG, QRY, SEG, COM, RES, OBS, IA, MIG, TST, ARQ, UX, ROAST.
 - `location.repo`: nome do diretório raiz do repo (`basename` do `git rev-parse --show-toplevel`).
 - `evidence`: cópia literal do código, sem paráfrase. Máximo ~15 linhas.
 - `fix`: código ou diff aplicável. "Considere melhorar" é inválido.
