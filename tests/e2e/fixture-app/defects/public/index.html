@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aulas</title><style>body{margin:0;font:16px system-ui}main{padding:16px}button{min-height:44px;padding:0 16px}</style></head>
+<body><main>
+<h1>Aula ao vivo</h1>
+<section style="min-height:260px;background:#eee;margin-bottom:12px">Sobre a aula</section>
+<section style="min-height:260px;background:#eee;margin-bottom:12px">Professor</section>
+<section style="min-height:260px;background:#eee;margin-bottom:12px">Materiais</section>
+<button id="remind">Ativar lembrete</button>
+<p id="status" role="status"></p>
+</main>
+<script>
+document.getElementById("remind").onclick = function () {
+  var plan = window.plan, live = window.live;
+  document.getElementById("status").textContent = plan ? live ? "Lembrete premium ativado" : "Lembrete premium agendado" : live ? "Lembrete ativado" : "Lembrete agendado";
+};
+</script></body></html>
