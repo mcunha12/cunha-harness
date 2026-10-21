@@ -329,7 +329,7 @@ Todo BLOCKER e MAJOR confirmado, de qualquer review (lean, full, avulsa), entra 
 - Um script determinístico gera o `tracker.html` a partir do `state.json` a cada checkpoint. Zero token por atualização.
 - Nos marcos (task concluída ou bloqueada, gate, pausa, retomada, fim), um Haiku medium escreve o bloco "Situação agora" no topo: 3 a 5 linhas com o que avançou, o que travou e o que vem a seguir. Decisão do Marcelo, 21/10.
 - A página se atualiza sozinha sem perder a rolagem.
-- O /dev imprime o caminho do HTML no começo da feature. O Marcelo abre.
+- O /dev sobe um servidor local (`http://localhost:4777/f/<slug>`) e imprime o link no começo da feature. A página se atualiza ao vivo a cada checkpoint, sem F5. Decisão do Marcelo, 21/10.
 - Custo: se o Claude Code não expuser tokens por agente, o `costs.jsonl` registra contagem de agentes e duração, e o HTML diz que é aproximação.
 
 ## 13. Repositório `cunha-harness`

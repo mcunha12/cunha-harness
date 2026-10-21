@@ -229,7 +229,7 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
         body.append('<section class="card"><h2>Requisitos</h2><p class="src">Fase de requisitos e planejamento. '
                     'O grafo aparece quando o plano for gravado.</p></section>')
         body.append(f'<section class="card"><h2>Decisões</h2>{_list(decision_items, "Nenhuma decisão ainda.")}</section>')
-        return template.replace("{{TITLE}}", e(feature)).replace("{{BODY}}", "\n".join(body))
+        return template.replace("{{FEATURE}}", e(state.get("feature", ""))).replace("{{TITLE}}", e(feature)).replace("{{BODY}}", "\n".join(body))
 
     tasks = devgraph._tasks(plan)
     busy = _busy(state)
@@ -289,7 +289,7 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
                 f'<section class="card"><h2>Aprendizado (/code-guard)</h2>{_list(learned_items, "Nenhum achado registrado nesta feature.")}'
                 '<h2 style="margin-top:14px">Custo até agora</h2><table><thead><tr><th>Item</th><th style="text-align:right">Tokens</th>'
                 f'</tr></thead><tbody>{cost_rows}{review_rows}</tbody></table></section></div>')
-    return template.replace("{{TITLE}}", e(feature)).replace("{{BODY}}", "\n".join(body))
+    return template.replace("{{FEATURE}}", e(state.get("feature", ""))).replace("{{TITLE}}", e(feature)).replace("{{BODY}}", "\n".join(body))
 
 
 def _pid_alive(pid):

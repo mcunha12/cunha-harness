@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
+<meta name="feature" content="{{FEATURE}}">
 <style>
 :root {
   --bg: #f6f6f4; --surface: #ffffff; --text: #1c1c1a; --muted: #6b6b66; --border: #e2e1dc;
@@ -113,11 +114,25 @@ ul.plain li:last-child { border-bottom: 0; }
 {{BODY}}
 </main>
 <script>
-try { var y = sessionStorage.getItem("tracker-y"); if (y) window.scrollTo(0, parseInt(y, 10)); } catch (e) {}
-setInterval(function () {
-  try { sessionStorage.setItem("tracker-y", String(window.scrollY)); } catch (e) {}
-  location.reload();
-}, 10000);
+(function () {
+  var slug = document.querySelector('meta[name="feature"]').content;
+  // via localhost: troca o conteúdo quando o servidor avisa, sem recarregar nem perder a rolagem
+  if (location.protocol.indexOf("http") === 0 && window.EventSource) {
+    var source = new EventSource("/events?f=" + encodeURIComponent(slug));
+    source.onmessage = function () {
+      fetch(location.pathname, { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (text) {
+        var next = new DOMParser().parseFromString(text, "text/html").querySelector("main");
+        if (next) document.querySelector("main").innerHTML = next.innerHTML;
+      });
+    };
+    return;
+  }
+  try { var y = sessionStorage.getItem("tracker-y"); if (y) window.scrollTo(0, parseInt(y, 10)); } catch (e) {}
+  setInterval(function () {
+    try { sessionStorage.setItem("tracker-y", String(window.scrollY)); } catch (e) {}
+    location.reload();
+  }, 10000);
+})();
 </script>
 </body>
 </html>

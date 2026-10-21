@@ -52,6 +52,8 @@ enquanto o gate final não passou:
 
 Nenhum slot fica livre enquanto `next` devolver trabalho. Cada `devstate.py` regrava o `tracker.html`.
 
+Na Fase 2, ao publicar, suba `scripts/serve_tracker.py` em background se a porta 8765 estiver livre e passe ao Marcelo o link `http://127.0.0.1:8765/<slug>/tracker.html`, não o caminho do arquivo.
+
 Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da feature): dispare em background um agente `model: "haiku"`, `effort: "medium"` com `prompts/situation.md`. Ele grava `situation.json` e o bloco "Situação agora" aparece no topo do tracker. Esse agente não ocupa worker. O resto da página continua com o script, sem token.
 
 ## 5. Modelos e esforço
@@ -81,5 +83,7 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 | `scripts/devstate.py` | estado atômico, checkpoints, logs, hash de leitura |
 | `scripts/heavy_lock.sh` | trava global de 2 processos pesados (`DEV_HEAVY_SLOTS`) |
 | `scripts/render_tracker.py` | `tracker.html` a partir do estado |
+| `scripts/tracker_server.py` | servidor local do tracker em `http://localhost:4777` (porta em `DEV_TRACKER_PORT`), atualização ao vivo |
+| `scripts/serve_tracker.py` | serve o tracker em `http://127.0.0.1:8765/<slug>/tracker.html` e recarrega sozinho quando o arquivo muda |
 
 Caminho dos scripts depois do install: `~/.claude/skills/dev/scripts/`.

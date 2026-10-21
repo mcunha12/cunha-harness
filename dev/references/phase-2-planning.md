@@ -55,4 +55,11 @@ O `analyze` grava custos, caminho à frente, caminho crítico e clusters (MST so
 
 ## 5. Publicar
 
-Crie as branches da feature (`feat/<slug>`) em cada repo a partir da base, registre em `state.json`, gere o tracker e imprima o caminho do `tracker.html`. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.
+Crie as branches da feature (`feat/<slug>`) em cada repo a partir da base, registre em `state.json` e gere o tracker. Suba o servidor do tracker, se ele ainda não estiver no ar, e imprima o link:
+
+```bash
+curl -sf http://localhost:4777/health >/dev/null || (nohup python3 ~/.claude/skills/dev/scripts/tracker_server.py >/dev/null 2>&1 &)
+echo "http://localhost:4777/f/<slug>"
+```
+
+A página aberta pelo localhost se atualiza sozinha a cada checkpoint, sem recarregar e sem perder a rolagem. Aberta como arquivo, ela recarrega a cada 10 s. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.
