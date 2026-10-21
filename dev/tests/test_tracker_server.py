@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import json
 import time
 import unittest
 import urllib.request
@@ -46,6 +47,32 @@ class TrackerServerTest(unittest.TestCase):
         with open(os.path.join(self.feature, "tracker.html"), "w") as f:
             f.write(html)
 
+    def add_feature(self, slug, phase="execution"):
+        folder = os.path.join(self.root, slug)
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, "state.json"), "w") as f:
+            json.dump({"feature": slug, "phase": phase}, f)
+        with open(os.path.join(folder, "tracker.html"), "w") as f:
+            f.write(f"<html><body><main>{slug}</main></body></html>")
+
+    def first_event(self, slug, change):
+        events = []
+        resp = urllib.request.urlopen(self.url(f"/events?f={slug}"), timeout=10)
+
+        def read():
+            for raw in resp:
+                line = raw.decode().strip()
+                if line.startswith("data:"):
+                    events.append(line)
+                    return
+
+        reader = threading.Thread(target=read, daemon=True)
+        reader.start()
+        time.sleep(0.5)
+        change()
+        reader.join(timeout=5)
+        return events
+
     def get(self, path):
         with urllib.request.urlopen(self.url(path), timeout=3) as resp:
             return resp.read().decode()
@@ -66,21 +93,28 @@ class TrackerServerTest(unittest.TestCase):
             self.get("/f/..%2F..%2Fetc")
 
     def test_event_stream_fires_on_change(self):
-        events = []
-        resp = urllib.request.urlopen(self.url("/events?f=lembrete-aula"), timeout=10)
+        events = self.first_event("lembrete-aula", lambda: self.write("<html><body><main>v2</main></body></html>"))
+        self.assertEqual(events, ["data: update"])
 
-        def read():
-            for raw in resp:
-                line = raw.decode().strip()
-                if line.startswith("data:"):
-                    events.append(line)
-                    return
+    def test_single_feature_has_no_tabs(self):
+        self.assertNotIn('class="tabs"', self.get("/f/lembrete-aula"))
 
-        reader = threading.Thread(target=read, daemon=True)
-        reader.start()
-        time.sleep(0.5)
-        self.write("<html><body><main>v2</main></body></html>")
-        reader.join(timeout=5)
+    def test_tabs_link_every_open_feature_and_mark_current(self):
+        self.add_feature("fup-perto-da-prova")
+        page = self.get("/f/lembrete-aula")
+        self.assertIn('<nav class="tabs"', page)
+        self.assertIn('href="/f/fup-perto-da-prova"', page)
+        self.assertIn('href="/f/lembrete-aula" aria-current="page"', page)
+        self.assertLess(page.index('class="tabs"'), page.index("v1"))
+
+    def test_done_feature_leaves_tabs_unless_open(self):
+        self.add_feature("fup-perto-da-prova")
+        self.add_feature("filtro-aulas", phase="done")
+        self.assertNotIn('href="/f/filtro-aulas"', self.get("/f/lembrete-aula"))
+        self.assertIn('href="/f/filtro-aulas" aria-current="page"', self.get("/f/filtro-aulas"))
+
+    def test_new_feature_fires_event_on_open_page(self):
+        events = self.first_event("lembrete-aula", lambda: self.add_feature("fup-perto-da-prova"))
         self.assertEqual(events, ["data: update"])
 
 
