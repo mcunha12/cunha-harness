@@ -7,7 +7,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 
-from devgraph import critical_path, path_ahead, task_cost, validate  # noqa: E402
+from devgraph import affinity_clusters, critical_path, jaccard_distance, path_ahead, task_cost, validate  # noqa: E402
 
 
 def load_fixture(name):
@@ -76,6 +76,35 @@ class DevgraphCoreTest(unittest.TestCase):
     @staticmethod
     def task_in(plan, tid):
         return next(t for t in plan["tasks"] if t["id"] == tid)
+
+
+class AffinityTest(unittest.TestCase):
+    def setUp(self):
+        self.plan = load_fixture("plan-lembrete.json")
+
+    def test_jaccard(self):
+        self.assertAlmostEqual(jaccard_distance({"a", "b"}, {"b", "c"}), 2 / 3, places=4)
+
+    def test_jaccard_empty(self):
+        self.assertEqual(jaccard_distance(set(), set()), 1.0)
+
+    def test_fixture_clusters(self):
+        self.assertEqual(affinity_clusters(self.plan),
+                         {"A": ["T1", "T2", "T3"], "B": ["T4", "T5"], "C": ["T6", "T7", "T8"]})
+
+    def test_max_size(self):
+        plan = chain_plan(5, ["T5"])
+        for t in plan["tasks"]:
+            t["files_hint"] = ["shared.ts"]
+        clusters = affinity_clusters(plan)
+        self.assertLessEqual(max(len(v) for v in clusters.values()), 4)
+        self.assertEqual(sum(len(v) for v in clusters.values()), 5)
+
+    def test_cross_repo_never_clusters(self):
+        plan = chain_plan(2, ["T2"])
+        plan["tasks"][0].update(repo="a", files_hint=["x.ts"])
+        plan["tasks"][1].update(repo="b", files_hint=["x.ts"])
+        self.assertEqual(len(affinity_clusters(plan)), 2)
 
 
 if __name__ == "__main__":

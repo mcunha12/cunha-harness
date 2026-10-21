@@ -4,6 +4,8 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 MAX_TASKS_BETWEEN_GATES = 6
 
 
@@ -137,6 +139,83 @@ def critical_path(plan):
     return path
 
 
+def jaccard_distance(a, b):
+    union = set(a) | set(b)
+    if not union:
+        return 1.0
+    return 1 - len(set(a) & set(b)) / len(union)
+
+
+def affinity_clusters(plan, cut=0.8, max_size=4):
+    tasks = plan.get("tasks", [])
+    order = [t["id"] for t in tasks]
+    edges = []
+    for i, a in enumerate(tasks):
+        for b in tasks[i + 1:]:
+            same_repo = a.get("repo") == b.get("repo")
+            dist = jaccard_distance(a.get("files_hint", []), b.get("files_hint", [])) if same_repo else 1.0
+            edges.append((dist, order.index(a["id"]), order.index(b["id"])))
+    parent = {tid: tid for tid in order}
+    size = {tid: 1 for tid in order}
+
+    def root(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    # Kruskal; aresta >= cut fica cortada e o teto de tamanho impede componente grande
+    for dist, i, j in sorted(edges):
+        if dist >= cut:
+            break
+        ra, rb = root(order[i]), root(order[j])
+        if ra != rb and size[ra] + size[rb] <= max_size:
+            parent[rb] = ra
+            size[ra] += size[rb]
+    groups = {}
+    for tid in order:
+        groups.setdefault(root(tid), []).append(tid)
+    labels = {}
+    for tid in order:
+        r = root(tid)
+        if r not in labels:
+            labels[r] = _label(len(labels))
+    return {labels[r]: members for r, members in sorted(groups.items(), key=lambda kv: order.index(kv[1][0]))}
+
+
+def _label(index):
+    letters = ""
+    index += 1
+    while index:
+        index, rem = divmod(index - 1, 26)
+        letters = chr(65 + rem) + letters
+    return letters
+
+
+def analyze(plan):
+    clusters = affinity_clusters(plan)
+    plan["analysis"] = {
+        "costs": {t["id"]: task_cost(t) for t in plan.get("tasks", [])},
+        "path_ahead": path_ahead(plan),
+        "critical_path": critical_path(plan),
+        "clusters": clusters,
+        "task_cluster": {tid: label for label, members in clusters.items() for tid in members},
+    }
+    return plan
+
+
+def _write_json(path, data):
+    try:
+        from devstate import atomic_write_json
+    except ImportError:
+        tmp = f"{path}.tmp"
+        with open(tmp, "w") as f:
+            json.dump(data, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, path)
+        return
+    atomic_write_json(path, data)
+
+
 def main(argv):
     if len(argv) < 3:
         print("uso: devgraph.py validate|analyze <plan.json> | next <plan.json> <state.json> --free N", file=sys.stderr)
@@ -147,6 +226,14 @@ def main(argv):
         errors = validate(plan)
         print(json.dumps(errors, ensure_ascii=False))
         return 1 if errors else 0
+    if cmd == "analyze":
+        errors = validate(plan)
+        if errors:
+            print(json.dumps(errors, ensure_ascii=False))
+            return 1
+        _write_json(plan_path, analyze(plan))
+        print(json.dumps(plan["analysis"], ensure_ascii=False))
+        return 0
     print(f"comando desconhecido: {cmd}", file=sys.stderr)
     return 2
 
