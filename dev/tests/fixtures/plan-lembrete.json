@@ -1,0 +1,201 @@
+{
+ "feature": "lembrete-aula",
+ "repos": [
+  "api-bff",
+  "web-app"
+ ],
+ "tasks": [
+  {
+   "id": "T1",
+   "title": "Tabela de preferências",
+   "description": "Tabela de preferências",
+   "done_when": "Tabela de preferências",
+   "repo": "api-bff",
+   "files_hint": [
+    "db/migrations/001.sql",
+    "src/reminders/prefs.entity.ts"
+   ],
+   "read_list": [
+    "db/migrations/001.sql",
+    "src/reminders/prefs.entity.ts"
+   ],
+   "complexity": 3,
+   "risk": 5,
+   "depends_on": [],
+   "changes_behavior": true,
+   "has_ui": false
+  },
+  {
+   "id": "T2",
+   "title": "Endpoint preferências",
+   "description": "Endpoint preferências",
+   "done_when": "Endpoint preferências",
+   "repo": "api-bff",
+   "files_hint": [
+    "src/reminders/prefs.entity.ts",
+    "src/reminders/prefs.controller.ts"
+   ],
+   "read_list": [
+    "src/reminders/prefs.entity.ts",
+    "src/reminders/prefs.controller.ts"
+   ],
+   "complexity": 3,
+   "risk": 3,
+   "depends_on": [
+    "T1"
+   ],
+   "changes_behavior": true,
+   "has_ui": false
+  },
+  {
+   "id": "T3",
+   "title": "Job de lembretes",
+   "description": "Job de lembretes",
+   "done_when": "Job de lembretes",
+   "repo": "api-bff",
+   "files_hint": [
+    "src/reminders/prefs.entity.ts",
+    "src/reminders/reminder.job.ts"
+   ],
+   "read_list": [
+    "src/reminders/prefs.entity.ts",
+    "src/reminders/reminder.job.ts"
+   ],
+   "complexity": 4,
+   "risk": 3,
+   "depends_on": [
+    "T1"
+   ],
+   "changes_behavior": true,
+   "has_ui": false
+  },
+  {
+   "id": "T4",
+   "title": "Template de e-mail",
+   "description": "Template de e-mail",
+   "done_when": "Template de e-mail",
+   "repo": "api-bff",
+   "files_hint": [
+    "src/notifications/templates/reminder.html"
+   ],
+   "read_list": [
+    "src/notifications/templates/reminder.html"
+   ],
+   "complexity": 2,
+   "risk": 1,
+   "depends_on": [],
+   "changes_behavior": true,
+   "has_ui": false
+  },
+  {
+   "id": "T5",
+   "title": "Envio pelo provedor",
+   "description": "Envio pelo provedor",
+   "done_when": "Envio pelo provedor",
+   "repo": "api-bff",
+   "files_hint": [
+    "src/notifications/templates/reminder.html",
+    "src/notifications/send.ts"
+   ],
+   "read_list": [
+    "src/notifications/templates/reminder.html",
+    "src/notifications/send.ts"
+   ],
+   "complexity": 3,
+   "risk": 3,
+   "depends_on": [
+    "T3",
+    "T4"
+   ],
+   "changes_behavior": true,
+   "has_ui": false
+  },
+  {
+   "id": "T6",
+   "title": "Tela de preferências",
+   "description": "Tela de preferências",
+   "done_when": "Tela de preferências",
+   "repo": "web-app",
+   "files_hint": [
+    "src/pages/Preferences/index.tsx",
+    "src/pages/Preferences/styles.ts"
+   ],
+   "read_list": [
+    "src/pages/Preferences/index.tsx",
+    "src/pages/Preferences/styles.ts"
+   ],
+   "complexity": 4,
+   "risk": 2,
+   "depends_on": [
+    "G1"
+   ],
+   "changes_behavior": true,
+   "has_ui": true
+  },
+  {
+   "id": "T7",
+   "title": "Toggle na página da aula",
+   "description": "Toggle na página da aula",
+   "done_when": "Toggle na página da aula",
+   "repo": "web-app",
+   "files_hint": [
+    "src/pages/Live/ReminderToggle.tsx",
+    "src/pages/Preferences/index.tsx"
+   ],
+   "read_list": [
+    "src/pages/Live/ReminderToggle.tsx",
+    "src/pages/Preferences/index.tsx"
+   ],
+   "complexity": 2,
+   "risk": 2,
+   "depends_on": [
+    "G1"
+   ],
+   "changes_behavior": true,
+   "has_ui": true
+  },
+  {
+   "id": "T8",
+   "title": "Eventos de analytics",
+   "description": "Eventos de analytics",
+   "done_when": "Eventos de analytics",
+   "repo": "web-app",
+   "files_hint": [
+    "src/analytics/events.ts",
+    "src/pages/Preferences/index.tsx",
+    "src/pages/Live/ReminderToggle.tsx"
+   ],
+   "read_list": [
+    "src/analytics/events.ts",
+    "src/pages/Preferences/index.tsx",
+    "src/pages/Live/ReminderToggle.tsx"
+   ],
+   "complexity": 2,
+   "risk": 2,
+   "depends_on": [
+    "T6",
+    "T7"
+   ],
+   "changes_behavior": true,
+   "has_ui": false
+  }
+ ],
+ "gates": [
+  {
+   "id": "G1",
+   "title": "backend fechado",
+   "waits_for": [
+    "T2",
+    "T5"
+   ]
+  },
+  {
+   "id": "G2",
+   "title": "feature completa",
+   "waits_for": [
+    "T8"
+   ]
+  }
+ ],
+ "analysis": {}
+}
