@@ -1,9 +1,8 @@
 ---
 name: master-review
 description: Orquestra o swarm de code review. Escolhe os especialistas review-* que se aplicam ao diff, roda todos em paralelo (scan em Haiku), deduplica, verifica cada BLOCKER/MAJOR, cataloga as tasks e dispara agents de correção (Sonnet) para resolver cada uma, sem commitar. Use com /master-review ou ao pedir "revisão completa", "roda todos os revisores", "master review desse MR". Para um tema só, use o especialista direto (/review-seguranca etc.).
-argument-hint: "[--base <branch>] [--path <glob>] [--full] [--only a,b] [--skip a,b] [--severity MAJOR] [--report-only] [--uncommitted] [--mr <id>] [--post]"
+argument-hint: "[--lean] [--roast] [--base <branch>] [--path <glob>] [--full] [--only a,b] [--skip a,b] [--severity MAJOR] [--report-only] [--uncommitted] [--mr <id>] [--post]"
 model: opus
-disable-model-invocation: true
 ---
 
 # master-review
@@ -16,6 +15,7 @@ O orquestrador roda em Opus. Ele lê o diff, decide quais especialistas rodar, d
 |---|---|---|
 | Orquestrador (esta skill) | Opus | `model: opus` no frontmatter |
 | Scan (um subagent por especialista) | Haiku | Agent tool com `model: "haiku"` |
+| Scan de `review-roast` e `review-ux` | Sonnet | Agent tool com `model: "sonnet"` (crítica e leitura de print pedem mais que Haiku) |
 | Correção (um subagent por task) | Sonnet | Agent tool com `model: "sonnet"` |
 
 A verificação de BLOCKER/MAJOR (passo 8) é do próprio orquestrador. Ela não sai para subagent.
@@ -26,6 +26,8 @@ A verificação de BLOCKER/MAJOR (passo 8) é do próprio orquestrador. Ela não
 
 | Flag | Efeito |
 |---|---|
+| `--lean` | Modo do /dev por task ou cluster. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
+| `--roast` | Liga o `review-roast` no modo `--lean`. Na full ele já roda. |
 | `--base <branch>` | Base do diff. Padrão: config > `main` > `master` > `develop`, o primeiro que existir no remote. |
 | `--path <glob>` | Restringe o escopo aos arquivos que batem com o glob. |
 | `--full` | Repo inteiro. Avise o custo estimado (arquivos × agentes) e faça sharding de ~25 arquivos por subagent. |
@@ -67,6 +69,7 @@ Monte um bloco de texto com:
 - `conventions`: campo da config + `CLAUDE.md` do repo (resuma em até 15 linhas os pontos que afetam revisão).
 - `related_repos`: caminhos da config.
 - `files`: lista de arquivos do escopo, com `+/-` linhas.
+- `overlay`: rode `python3 ~/.claude/skills/code-guard/scripts/overlay.py match <repo>`. Com resultado, leia `<dir>/<file>` e acrescente as regras da empresa a `conventions`.
 - `diff_path`: salve o diff em `<scratchpad>/master-review/<run>/diff.patch` e passe o caminho. Não cole diff grande no prompt.
 
 ### 3. Roteamento
@@ -85,6 +88,9 @@ Decida os agentes e imprima a tabela `agente → motivo` / `pulado porque`.
 | migrations | diretório de migrations ou schema do ORM (`schema.prisma`, `alembic/`, `migrations/`) |
 | ia | import de SDK de LLM, arquivos de prompt, MCP, ou `repo_role` de IA |
 | modularidade | arquivo/módulo novo, import novo entre módulos, ou mais de ~10 arquivos |
+| arquitetura | gatilho da modularidade, dependência nova em manifesto (`package.json`, `pyproject.toml`), ou mecanismo novo (client, fila, cache, cron, estado global) |
+| ux | componentes, páginas, estilos, JSX/TSX. Roda depois do passo 8b, com os prints |
+| roast | full: sempre que houver código-fonte. Lean: só com `--roast` |
 
 Aplique `skip_agents`, `--only` e `--skip` depois da tabela.
 
@@ -101,6 +107,10 @@ Diff: leia <diff_path>. Arquivos do seu escopo: <lista>.
 Referências compartilhadas: ~/.claude/skills/master-review/references/
 Devolva SOMENTE o bloco ```json do output contract (sem o markdown).
 ```
+
+Com `--lean`, acrescente ao prompt: "Modo lean: devolva só achados BLOCKER e MAJOR."
+
+roast: `model: "sonnet"`. O context packet vai sem `conventions` e sem overlay: o roast lê o diff como revisor externo. Acrescente a spec da feature quando houver.
 
 Diff com mais de ~1.500 linhas: fatie por grupos de arquivos coesos (mesmo diretório/feature) e dispare um subagent por fatia do mesmo especialista. O teto é 20 subagents simultâneos. Acima disso, rode em ondas.
 
@@ -126,11 +136,26 @@ Para cada BLOCKER e MAJOR, o orquestrador abre o arquivo, lê o contexto (caller
 
 ### 8b. Revisão visual em celular (obrigatória com UI no diff)
 
-Diff com componente, página ou estilo: o orquestrador abre cada tela alterada num navegador headless (nunca janela visível), primeiro em 375×667 (iPhone SE), depois em desktop, pelo fluxo real de cliques. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**.
+Diff com componente, página ou estilo: o orquestrador sobe o app (comando, URL e login de `~/.claude/dev/repos/<repo>/run.json` quando existir) e percorre cada tela alterada pelo fluxo real de cliques, primeiro no iPhone SE, depois em desktop:
+
+```bash
+python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/iphone-se --device iphone-se --steps <steps.json>
+python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/desktop --device desktop --steps <steps.json>
+```
+
+`steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (375×667, DPR 2, toque).
+
+Leia cada print. `report.json` com `scroll_width` acima da largura é rolagem horizontal: achado `front`. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Com `--lean`, só iPhone SE. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, revisão visual pendente bloqueia a task.
+
+### 8c. UX
+
+Com UI no diff, dispare o `review-ux` (`model: "sonnet"`) com os prints do 8b, o diff e o job to be done da spec. O resultado passa pela coleta, dedup e verificação (passos 5 a 8).
 
 ### 9. Relatório
 
 Salve em `<repo>/.claude/reviews/<branch-sem-barra>-<YYYYMMDD-HHMM>.md` e mostre no terminal. Formato em `references/report-template.md`. Ordem:
+
+Com `--lean`, o relatório tem só: veredito, achados BLOCKER/MAJOR por arquivo, Roast (quando ligado) e Correção.
 
 1. Veredito: **APROVAR** (zero BLOCKER e zero MAJOR), **APROVAR COM RESSALVAS** (MAJOR sem BLOCKER), **BLOQUEAR** (algum BLOCKER).
 2. Resumo executivo, 3-5 linhas.
@@ -142,6 +167,18 @@ Salve em `<repo>/.claude/reviews/<branch-sem-barra>-<YYYYMMDD-HHMM>.md` e mostre
 8. Agentes executados, pulados e com falha, com motivo.
 9. Handoffs não resolvidos.
 10. Seção "Correção" (preenchida no passo 11).
+
+### 9b. Ledger (todo modo, inclusive `--report-only` e `--lean`)
+
+Grave os BLOCKER e MAJOR confirmados (ou rebaixados para MAJOR) no ledger da code-guard. Salve os achados verificados, com o campo `verification`, em `<run>/verified.json`:
+
+```bash
+python3 ~/.claude/skills/code-guard/scripts/ledger.py append --findings <run>/verified.json --repo <repo> \
+  --feature <feature ou avulsa> --task <task ou avulsa> --loaded-domains <domínios da code-guard carregados, se houver>
+python3 ~/.claude/skills/code-guard/scripts/ledger.py triggers
+```
+
+Trigger na saída: carregue a skill `code-guard` e siga a seção "Ciclo de aprendizado".
 
 Com `--report-only`, pare aqui.
 

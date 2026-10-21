@@ -25,6 +25,9 @@
 <details><summary>NITs (n)</summary>
 </details>
 
+## Roast
+Uma linha por crítica do review-roast que sobreviveu à verificação: id, arquivo:linhas, crítica, motivo e consequência. Críticas descartadas por contradizer convenção documentada vão em `<details>` com o motivo.
+
 ## Trade-offs
 | Trecho | Agente A pede | Agente B pede | Decisão |
 |---|---|---|---|
