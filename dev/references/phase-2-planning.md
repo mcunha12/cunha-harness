@@ -64,4 +64,6 @@ curl -sf http://localhost:4777/health >/dev/null || (nohup python3 ~/.claude/ski
 echo "http://localhost:4777/f/<slug>"
 ```
 
+Baseline de falhas: rode uma vez, na base, os testes da área que o plano toca (via `heavy_lock.sh`, workers limitados) e grave os que já falham com `devstate.py baseline <dir> '<json-list>'`. Implementador, revisor e gate leem `state.baseline_failures` e não reinvestigam essas falhas. Em ranking-fellowship (21/10/2026), a falha do card 17205 foi investigada em 4 lugares.
+
 A página aberta pelo localhost se atualiza sozinha a cada checkpoint, sem recarregar e sem perder a rolagem. Aberta como arquivo, ela recarrega a cada 10 s. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.

@@ -16,13 +16,17 @@ Dependência satisfeita: task `done`; gate `passed`; ou task `implemented` do me
 
 | Passo | O que faz | Saída |
 |---|---|---|
-| 1 Escopo | fecha entrega e `done_when` | `tasks/<id>/scope.md` |
+| 1 Escopo | fecha entrega e `done_when`; só complexidade 4 e 5 | `tasks/<id>/scope.md` |
 | 2 Leitura | lê `read_list`, fatos com `arquivo:linha` e hash | `tasks/<id>/reading.md` |
 | 3 Avaliação | arquivos, mudança, casos de teste, verificação | `tasks/<id>/plan.md` |
 | 4 Testes | Mode A da /test-audit, commit `test:` | commit |
 | 5 Implementação | code-guard carregada, até o verde | commits + `result.json` |
 
 - Passos 1 e 2 rodam em paralelo no mesmo slot.
+- Complexidade até 3: não há passo 1. O passo 3 grava `scope.md` e `plan.md` (`devgraph.required_steps`).
+- `devstate.py step-started` recusa (exit 3) passo já feito ou rodando. Antes de disparar de novo, confira se o arquivo de saída já existe. Refazer de propósito: `--force`.
+- Base fresca: antes do passo 3 de cada task e antes do gate, rode `git merge-base --is-ancestor <base> <branch da feature>`. Se a base andou, junte a base na branch da feature na hora e rode os testes da área. Se a base já entrou na `main`, a base passa a ser a `main`. Em ranking-fellowship a base andou duas vezes e o conflito apareceu só no fim, em 6 arquivos.
+- Dado pessoal em teste: o passo 4 e o passo 5 rodam `python3 ~/.claude/skills/dev/scripts/fixture_pii.py <worktree> <base da task>` antes do commit. Exit 1 bloqueia o commit até trocar o dado por pseudônimo (`Aluno Exemplo NN`, `@exemplo.com`, `Cidade Exemplo N`/`ZZ`, `11900xxxxxx`). Em ranking-fellowship o dado pessoal foi achado 3 vezes, sempre na review.
 - `changes_behavior` falso pula o passo 4.
 - Antes do passo 4, crie a worktree: `git worktree add <repo>/.worktrees/<task> -b dev/<slug>/<task> <base da task>`. Base da task: `stack_on` quando houver (branch da dependência), senão a branch da feature.
 - Worktree nova sem mudança de `package.json`: `ln -s <repo>/node_modules <worktree>/node_modules`.
@@ -40,6 +44,12 @@ Dependência satisfeita: task `done`; gate `passed`; ou task `implemented` do me
 ## 4. Gate
 
 `devstate.py gate-status <dir> <gate> running` → `master-review --base <base> --spec <dir>/spec.md` (full) em cada repo, na branch da feature → correção → `passed` ou `blocked`. Gate bloqueado vai para o Marcelo; os workers seguem no que não depende dele.
+
+Escopo do gate:
+
+- Arquivos de task sem review lean (risco 1 a 3): full, com os especialistas que o diff pede.
+- Arquivos de task com review lean (risco 4 e 5): só as costuras. Passe `reviews/*.md` como "já decidido" e rode só `contratos`, `resiliencia`, `spec` e `test-audit`, com o foco em contrato entre camadas (card, tela, função), ordem de deploy e regressão do comportamento antigo. Medido em ranking-fellowship: o gate full custou 935 mil tokens; dos 9 MAJOR dele, 2 eram novos e os dois eram costura.
+- `fixture_pii.py` e a baseline de falhas rodam antes dos especialistas; o que eles acham não é reportado de novo.
 
 ## 5. Fim da feature
 
