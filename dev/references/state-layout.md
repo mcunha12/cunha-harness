@@ -57,7 +57,7 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 }
 ```
 
-- `implemented` = passos obrigatórios concluídos, sem review. `done` = review passou e a task entrou na branch da feature.
+- `implemented` = passos obrigatórios concluídos, sem review. `done` = a task entrou na branch da feature: depois da review lean (risco 4 e 5) ou direto (risco 1 a 3).
 - Passos obrigatórios: 1, 2, 3, 4, 5; sem o 4 quando `changes_behavior` é falso.
 
 ## Logs

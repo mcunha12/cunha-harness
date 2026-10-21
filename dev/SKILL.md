@@ -1,6 +1,6 @@
 ---
 name: dev
-description: Pipeline de desenvolvimento ponta a ponta. Requisitos com perguntas, quebra em tasks com grafo de dependências e clusters de afinidade (MST), execução com até 4 workers (Opus escopo e avaliação, Haiku leitura, Sonnet testes e implementação), review lean por task ou cluster e full nos gates, estado salvo para pausar e retomar. Use com /dev <pedido>, /dev, /dev stop, /dev resume <feature> [instrução], ou quando o Marcelo pedir para desenvolver uma feature a partir de um prompt, link do Jira, link do Notion ou arquivo.
+description: Pipeline de desenvolvimento ponta a ponta. Requisitos com perguntas, quebra em tasks com grafo de dependências e clusters de afinidade (MST), execução com até 4 workers (Opus escopo e avaliação, Haiku leitura, Sonnet testes e implementação), review lean só em task de risco alto e full nos gates, estado salvo para pausar e retomar. Use com /dev <pedido>, /dev, /dev stop, /dev resume <feature> [instrução], ou quando o Marcelo pedir para desenvolver uma feature a partir de um prompt, link do Jira, link do Notion ou arquivo.
 argument-hint: "[<pedido> | stop | resume <feature> [instrução]]"
 model: opus
 ---
@@ -49,7 +49,8 @@ Fila entre features, inclusive de outra sessão:
 enquanto o gate final não passou:
     livres = 4 - workers ocupados
     devgraph.py next plan.json state.json --free <livres>   → lista de assignments
-    para cada assignment: devstate.py worker <dir> <slot> '<assignment>' e dispare em background
+    para cada merge: merge na branch da feature, devstate.py task-status <dir> <task> done, git worktree remove
+    para cada outro assignment: devstate.py worker <dir> <slot> '<assignment>' e dispare em background
     ao receber a notificação de um agente:
         devstate.py step-done / task-status / gate-status conforme o resultado
         devstate.py cost <dir> '{"agent_role": ..., "model": ..., "task": ..., "tokens": ..., "duration_ms": ...}'
@@ -70,7 +71,7 @@ Marcos (task `done` ou `blocked`, gate com status novo, pausa, retomada, fim da 
 | 3 Avaliação | `model: "opus"`, `effort` = `opus_effort` da task, prompt `prompts/step-3-evaluation.md` |
 | 4 Testes | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-4-tests.md` |
 | 5 Implementação | `model: "sonnet"`, `effort: "medium"`, prompt `prompts/step-5-implementation.md` |
-| 6 Review lean | Skill `master-review` com `--lean --base <branch da feature> --spec <dir>/spec.md [--roast]` |
+| 6 Review lean (só risco 4 e 5) | Skill `master-review` com `--lean --base <branch da feature> --spec <dir>/spec.md --roast --only <até 5 especialistas>` |
 | Gate | Skill `master-review` full com `--base <base> --spec <dir>/spec.md`, uma por repo |
 
 `opus_effort` vale `medium` por padrão e `xhigh` só na task que a fase 2 marcou como grande ou com muitas regras.

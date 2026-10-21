@@ -235,8 +235,6 @@ def _in_flight(state):
 
 
 def next_assignments(plan, state, free_slots):
-    if free_slots <= 0:
-        return []
     tasks, gates = _tasks(plan), _gates(plan)
     analysis = plan.get("analysis") or {}
     ahead = analysis.get("path_ahead") or path_ahead(plan)
@@ -273,37 +271,11 @@ def next_assignments(plan, state, free_slots):
         out.append({"kind": "task", "task": tid, "from_step": steps[0] if steps else 5, "stack_on": stack_on(tid)})
 
     implemented = [tid for tid in tasks if status(tid) == "implemented" and tid not in busy_tasks]
-    batches = []
-
-    def add_batch(members):
-        if members and members not in batches:
-            batches.append(members)
-
-    def cluster_batch(tid):
-        label = cluster_of.get(tid)
-        return [m for m in implemented if cluster_of.get(m) == label and not high_risk(m)]
-
+    # Risco baixo ou médio vai direto para a branch da feature; quem revisa é o gate.
+    merges = [{"kind": "merge", "task": tid} for tid in implemented if not high_risk(tid)]
     for tid in implemented:
         if high_risk(tid):
-            add_batch([tid])
-            continue
-        members = [m for m in tasks if cluster_of.get(m) == cluster_of.get(tid)]
-        if all(status(m) in ("implemented", "done") for m in members):
-            add_batch(cluster_batch(tid))
-            continue
-        # review antecipada: alguém fora do cluster só espera por esta task
-        for waiter, node in [(n, tasks.get(n) or gates.get(n)) for n in _dependents(plan).get(tid, [])]:
-            if waiter in tasks and (cluster_of.get(waiter) == cluster_of.get(tid) or status(waiter) != "pending"):
-                continue
-            if waiter in gates and gstate.get(waiter, {}).get("status") != "pending":
-                continue
-            others = [d for d in (node.get("depends_on") or node.get("waits_for") or []) if d != tid]
-            if all((status(d) == "done") if d in tasks else gstate.get(d, {}).get("status") == "passed"
-                   for d in others):
-                add_batch(cluster_batch(tid))
-                break
-    for members in batches:
-        out.append({"kind": "review_lean", "tasks": members, "roast": any(high_risk(m) for m in members)})
+            out.append({"kind": "review_lean", "tasks": [tid], "roast": True})
 
     for gid, g in gates.items():
         if gstate.get(gid, {}).get("status", "pending") == "pending" and gid not in busy_gates \
@@ -320,10 +292,11 @@ def next_assignments(plan, state, free_slots):
         if tid in ready:
             continue
         done = set(tstate.get(tid, {}).get("steps_done", []))
-        steps = [n for n in (1, 2) if n not in done]
+        # Leitura de código com dependência aberta envelhece antes do passo 3: só o escopo adianta.
+        steps = [n for n in (1,) if n not in done]
         if steps and not (set(tasks[tid].get("files_hint", [])) & busy_files):
             out.append({"kind": "pre_read", "task": tid, "steps": steps})
-    return out[:free_slots]
+    return merges + out[:max(free_slots, 0)]
 
 
 def _write_json(path, data):

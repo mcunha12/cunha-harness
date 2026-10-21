@@ -139,18 +139,29 @@ class SchedulerTest(unittest.TestCase):
             w["assignment"] = None
         return state
 
-    def test_mockup_moment_fills_with_pre_reads(self):
+    def test_mockup_moment_merges_low_risk_and_fills_with_scope_only(self):
         self.assertEqual(next_assignments(self.plan, self.state, 3),
-                         [{"kind": "pre_read", "task": "T5", "steps": [1, 2]},
-                          {"kind": "pre_read", "task": "T6", "steps": [1, 2]},
-                          {"kind": "pre_read", "task": "T7", "steps": [1, 2]}])
+                         [{"kind": "merge", "task": "T2"},
+                          {"kind": "merge", "task": "T4"},
+                          {"kind": "pre_read", "task": "T5", "steps": [1]},
+                          {"kind": "pre_read", "task": "T6", "steps": [1]},
+                          {"kind": "pre_read", "task": "T7", "steps": [1]}])
 
-    def test_cluster_batch_when_last_task_implemented(self):
+    def test_low_risk_implemented_is_merged_without_lean_review(self):
         state = copy.deepcopy(self.state)
         free_worker(state)
         set_task(state, "T3", "implemented")
-        self.assertEqual(next_assignments(self.plan, state, 1),
-                         [{"kind": "review_lean", "tasks": ["T2", "T3"], "roast": False}])
+        out = next_assignments(self.plan, state, 1)
+        self.assertNotIn("review_lean", [a["kind"] for a in out])
+        self.assertIn({"kind": "merge", "task": "T3"}, out)
+
+    def test_merge_does_not_take_a_worker_slot(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "done")
+        set_task(state, "T4", "implemented")
+        out = next_assignments(self.plan, state, 1)
+        self.assertIn({"kind": "merge", "task": "T4"}, out)
+        self.assertEqual(len([a for a in out if a["kind"] != "merge"]), 1)
 
     def test_high_risk_reviewed_alone(self):
         state = self.fresh_state()
@@ -163,13 +174,6 @@ class SchedulerTest(unittest.TestCase):
         kinds = [(a["kind"], a.get("task")) for a in next_assignments(self.plan, state, 4)]
         self.assertNotIn(("task", "T2"), kinds)
 
-    def test_early_review_when_dependent_waits(self):
-        state = self.fresh_state()
-        set_task(state, "T1", "done")
-        set_task(state, "T4", "done")
-        set_task(state, "T3", "implemented")
-        state["tasks"]["T2"].update(steps_done=[1, 2], step_running=3)
-        self.assertIn({"kind": "review_lean", "tasks": ["T3"], "roast": False}, next_assignments(self.plan, state, 4))
 
     def test_gate_ready(self):
         state = self.fresh_state()
@@ -200,8 +204,9 @@ class SchedulerTest(unittest.TestCase):
         self.assertIn({"kind": "task", "task": "T1", "from_step": 1, "stack_on": None}, out)
         self.assertNotIn("T2", [a.get("task") for a in out if a["kind"] == "pre_read"])
 
-    def test_no_slots(self):
-        self.assertEqual(next_assignments(self.plan, self.state, 0), [])
+    def test_no_slots_still_merges(self):
+        self.assertEqual(next_assignments(self.plan, self.state, 0),
+                         [{"kind": "merge", "task": "T2"}, {"kind": "merge", "task": "T4"}])
 
 
 if __name__ == "__main__":
