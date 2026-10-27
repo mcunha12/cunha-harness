@@ -45,4 +45,6 @@ No print de iPhone SE (375×667), seguindo o fluxo real de cliques:
 - campos: entradas de texto ou seleção;
 - itens a lembrar: informação de uma tela que o usuário precisa levar para outra.
 
+Depois do caminho no iPhone SE, confira os prints de tablet (768×1024) e desktop (1280×720) só para mudança de layout.
+
 Com print da base (antes do diff), compare antes × depois e reporte a diferença. Sem print da base, reporte a contagem atual e o mínimo que o job exige.

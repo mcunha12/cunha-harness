@@ -20,7 +20,7 @@ A sessão principal é o orquestrador. Ela guarda estado, chama os scripts e dis
 
 ## 2. Regras invioláveis
 
-1. Tudo do `~/.claude/CLAUDE.md` vale aqui e em todo subagent: STE Operacional, comentário one-liner, testes só dos arquivos alterados com workers limitados, /test-audit antes de mudar comportamento, releitura antes de escrever em arquivo que outra pessoa ou sessão pode ter tocado. Todo prompt de UI carrega as regras de UI (headless, iPhone SE 375×667 primeiro, desktop 1440×900 depois, fluxo real de cliques, print conferido).
+1. Tudo do `~/.claude/CLAUDE.md` vale aqui e em todo subagent: STE Operacional, comentário one-liner, testes só dos arquivos alterados com workers limitados, /test-audit antes de mudar comportamento, releitura antes de escrever em arquivo que outra pessoa ou sessão pode ter tocado. Todo prompt de UI carrega as regras de UI (headless, iPhone SE 375×667 primeiro, tablet 768×1024 depois, desktop 1280×720 por último, fluxo real de cliques, print conferido).
 2. Nada em `main` ou `master`: commit, push e merge só em branch de feature ou de task.
 3. Só a sessão principal dispara agentes. Subagent não dispara subagent.
 4. Todo agente grava a saída no arquivo indicado e devolve só o caminho e até 5 linhas de resumo.

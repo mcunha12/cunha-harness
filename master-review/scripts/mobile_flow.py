@@ -18,7 +18,10 @@ DEVICES = {
     "iphone-se": {"width": 375, "height": 667, "dpr": 2, "mobile": True,
                   "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
                         "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"},
-    "desktop": {"width": 1440, "height": 900, "dpr": 1, "mobile": False, "ua": None},
+    "tablet": {"width": 768, "height": 1024, "dpr": 2, "mobile": True,
+               "ua": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                     "Version/17.0 Mobile/15E148 Safari/604.1"},
+    "desktop": {"width": 1280, "height": 720, "dpr": 1, "mobile": False, "ua": None},
 }
 
 

@@ -119,7 +119,7 @@ roast: `model: "sonnet"`. O context packet vai sem `conventions` e sem overlay: 
 
 Diff com mais de ~1.500 linhas: fatie por grupos de arquivos coesos (mesmo diretório/feature) e dispare um subagent por fatia do mesmo especialista. O teto é 20 subagents simultâneos. Acima disso, rode em ondas.
 
-front e a11y: acrescente ao prompt "Viewport de referência: iPhone SE (375×667). Avalie layout, overflow, texto cortado e alvos de toque nele; depois, desktop. Qualquer render no navegador é headless."
+front e a11y: acrescente ao prompt "Viewports de referência: iPhone SE (375×667), depois tablet (768×1024) e desktop (1280×720). Avalie layout, overflow, texto cortado e alvos de toque em cada um. Qualquer render no navegador é headless."
 
 test-audit: dispare um subagent Haiku que carrega a skill `test-audit` e roda o **Mode B (conference gate)** só em modo leitura: itens 1, 3 e 4 (ordem dos commits, fixtures com PII, classificação de cada teste adicionado ou alterado). Ele não roda testes e não edita. O resultado passa pelo adapter de `references/test-audit-adapter.md`.
 
@@ -159,14 +159,15 @@ BLOCKER exige nível 4 ou mais. Abaixo disso, escreva o script curto que prova o
 
 ### 8b. Revisão visual em celular (obrigatória com UI no diff)
 
-Diff com componente, página ou estilo: o orquestrador sobe o app (comando, URL e login de `~/.claude/dev/repos/<repo>/run.json` quando existir) e percorre cada tela alterada pelo fluxo real de cliques, primeiro no iPhone SE, depois em desktop:
+Diff com componente, página ou estilo: o orquestrador sobe o app (comando, URL e login de `~/.claude/dev/repos/<repo>/run.json` quando existir) e percorre cada tela alterada pelo fluxo real de cliques, primeiro no iPhone SE, depois tablet, depois desktop:
 
 ```bash
 python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/iphone-se --device iphone-se --steps <steps.json>
+python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/tablet --device tablet --steps <steps.json>
 python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/desktop --device desktop --steps <steps.json>
 ```
 
-`steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (375×667, DPR 2, toque).
+`steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (iPhone SE 375×667, DPR 2, toque; tablet 768×1024, DPR 2, toque e UA de iPad; desktop 1280×720, DPR 1).
 
 Leia cada print. `report.json` com `scroll_width` acima da largura é rolagem horizontal: achado `front`. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Com `--lean`, só iPhone SE. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, revisão visual pendente bloqueia a task.
 
