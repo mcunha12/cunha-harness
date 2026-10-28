@@ -44,7 +44,7 @@ Regra aprendida com a mesma origem (`review-x/categoria`) de uma regra do núcle
    `python3 ~/.claude/skills/code-guard/scripts/diff_checks.py run --repo . --base <branch base> --uncommitted`
 1. Type-check, lint e testes só dos arquivos tocados e dos consumidores diretos, via trava de processo pesado e com workers limitados:
    `~/.claude/skills/dev/scripts/heavy_lock.sh npx vitest run <arquivos> --maxWorkers=2`
-2. Tela alterada: siga o fluxo real de cliques em iPhone SE e depois desktop, e olhe os prints:
+2. Tela alterada: siga o fluxo real de cliques nas três telas, iPhone SE (375×667), depois tablet (768×1024) e depois desktop (1280×720), e olhe os prints:
    `python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <dir> --device iphone-se --steps <steps.json>`
    O Chrome headless não abre janela com menos de 500 px. Print de `--window-size=375` sai cortado. Use sempre o `mobile_flow.py`.
 3. Mudança de comportamento: a /test-audit (Mode A) vem antes do código.

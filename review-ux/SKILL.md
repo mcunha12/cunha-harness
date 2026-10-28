@@ -1,6 +1,6 @@
 ---
 name: review-ux
-description: Revisa usabilidade de um diff de UI (UX) pela lente Caminho A→B - quanto a tela aumenta o caminho do usuário até o job to be done - com um framework que junta Nielsen, Shneiderman, Norman e as heurísticas SMART de Joyce e Lilley. Sempre a partir do fluxo real de cliques no iPhone SE (375×667) e depois desktop. Acione em "revisa a UX desse PR", "essa tela está fácil?", "/review-ux" ou via master-review. NÃO cobre WCAG, teclado, ARIA e contraste (review-a11y), performance de render (review-front) nem copy jurídica.
+description: Revisa usabilidade de um diff de UI (UX) pela lente Caminho A→B - quanto a tela aumenta o caminho do usuário até o job to be done - com um framework que junta Nielsen, Shneiderman, Norman e as heurísticas SMART de Joyce e Lilley. Sempre a partir do fluxo real de cliques em três telas: iPhone SE (375×667), depois tablet (768×1024) e desktop (1280×720). Acione em "revisa a UX desse PR", "essa tela está fácil?", "/review-ux" ou via master-review. NÃO cobre WCAG, teclado, ARIA e contraste (review-a11y), performance de render (review-front) nem copy jurídica.
 argument-hint: "[--base <branch>] [--path <glob>] [--uncommitted]"
 ---
 
@@ -12,7 +12,7 @@ Reduzir a carga cognitiva do usuário para ir do ponto A ao ponto B e resolver o
 
 ## Entrada
 
-- Prints do fluxo real de cliques, capturados pelo orquestrador no passo 8b da master-review com `~/.claude/skills/master-review/scripts/mobile_flow.py`: iPhone SE primeiro, desktop depois. Standalone, capture você mesmo com esse script. Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai cortado.
+- Prints do fluxo real de cliques, capturados pelo orquestrador no passo 8b da master-review com `~/.claude/skills/master-review/scripts/mobile_flow.py`, nas três telas: iPhone SE primeiro (`--device iphone-se`), tablet depois (`--device tablet`), desktop por último (`--device desktop`). Standalone, capture você mesmo com esse script. Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai cortado.
 - O diff.
 - O job to be done da spec. Sem spec, escreva o job em uma frase a partir do diff e marque como inferido.
 
@@ -24,8 +24,8 @@ Leia `references/caminho-a-b.md`: 10 dimensões, fontes, heurísticas SMART e co
 
 1. Leia `~/.claude/skills/master-review/references/output-contract.md`, `severity-rubric.md` e `ownership-matrix.md`.
 2. Escreva o job to be done e o ponto A.
-3. Percorra os prints de iPhone SE na ordem do fluxo. Conte passos, decisões, campos e itens a lembrar.
-4. Passe cada tela pelas 10 dimensões. Repita no desktop só o que muda de layout.
+3. Percorra os prints de iPhone SE na ordem do fluxo, capturados com `--device iphone-se`. Conte passos, decisões, campos e itens a lembrar. Depois, os prints de tablet (`--device tablet`) e desktop (`--device desktop`).
+4. Passe cada tela pelas 10 dimensões. Repita no tablet e no desktop só o que muda de layout.
 5. Classifique com a rubrica abaixo e a global.
 6. Emita no output contract. Prefixo dos ids: `UX`. `evidence` cita o print (`arquivo.png`) e o trecho do diff. `problem` diz o custo no caminho A→B.
 
@@ -39,6 +39,7 @@ Standalone: mostre o markdown no final. Não altere código.
 **MAJOR**
 - Passo, decisão ou item de memória a mais no caminho principal sem necessidade do job.
 - Ação principal fora da primeira dobra em 375×667, sem pista de rolagem.
+- Layout que quebra só no tablet ou no desktop (ação principal cortada, sobreposição, rolagem horizontal) conta como no celular.
 - Erro sem mensagem que diga como sair, ou que apaga o que o usuário digitou.
 - Ação destrutiva sem confirmação nem desfazer.
 - Estado sem feedback: carregamento, sucesso ou falha invisíveis.
