@@ -83,6 +83,19 @@ class DevstateTest(unittest.TestCase):
         self.assertIsNone(s["tasks"]["T3"]["step_running"])
         self.assertTrue(all(w["assignment"] is None for w in s["workers"]))
 
+    def test_pause_reopens_final_tests_and_gate(self):
+        self.state["phase"] = "execution"
+        self.state["gates"] = {"G1": {"status": "testing", "report": None}}
+        self.assertEqual(devstate.pause(self.state, "stop")["gates"]["G1"]["status"], "pending")
+        self.state["gates"] = {"G1": {"status": "running", "report": None}}
+        self.assertEqual(devstate.pause(self.state, "stop")["gates"]["G1"]["status"], "tested")
+
+    def test_worker_slot_is_created_on_demand(self):
+        s = devstate.set_worker(self.state, 6, {"kind": "task", "task": "T3", "from_step": 2})
+        self.assertEqual(next(w for w in s["workers"] if w["slot"] == 6)["assignment"]["task"], "T3")
+        s = devstate.step_started(s, "T3", 2, 7)
+        self.assertEqual(next(w for w in s["workers"] if w["slot"] == 7)["assignment"]["task"], "T3")
+
     def test_reset_steps_drops_steps_from_n_and_reopens_task(self):
         s = self.state
         for step in (1, 2, 3, 4, 5):

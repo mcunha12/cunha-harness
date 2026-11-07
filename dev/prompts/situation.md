@@ -5,7 +5,7 @@ Marco que disparou esta atualização: {{milestone}}
 
 Escreva de 3 a 5 linhas, nesta ordem:
 1. o que avançou desde o último marco;
-2. o que está travado e por quê (task bloqueada, gate bloqueado, review com MAJOR), ou "nada travado";
+2. o que está travado e por quê (task bloqueada, testes finais ou gate final bloqueado), ou "nada travado";
 3. o que vem a seguir no caminho crítico.
 
 Regras: PT-BR, STE Operacional. Uma ideia por linha. Ids das tasks e dos gates como estão no plano. Número no lugar de qualificador. Sem preâmbulo, sem opinião.

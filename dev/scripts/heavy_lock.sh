@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Roda um comando pesado (tsc, testes, build, browser) só quando há slot livre; limite global DEV_HEAVY_SLOTS.
+# Roda um comando pesado só quando o slot do tipo está livre: build (tsc, lint, testes, build) ou qa (servidor e navegador).
 set -u
-DIR="${DEV_HEAVY_DIR:-$HOME/.claude/dev/heavy}"
-SLOTS="${DEV_HEAVY_SLOTS:-2}"
+USAGE="uso: heavy_lock.sh [--kind build|qa] <comando> [args...]"
+KIND=build
+if [ "${1:-}" = "--kind" ]; then
+  KIND="${2:-}"
+  shift 2 2>/dev/null || { echo "$USAGE" >&2; exit 2; }
+fi
+case "$KIND" in build|qa) ;; *) echo "$USAGE" >&2; exit 2 ;; esac
+DIR="${DEV_HEAVY_DIR:-$HOME/.claude/dev/heavy}/$KIND"
+SLOTS="${DEV_HEAVY_SLOTS:-1}"
 STALE_SECONDS=10
 mkdir -p "$DIR"
-[ "$#" -eq 0 ] && { echo "uso: heavy_lock.sh <comando> [args...]" >&2; exit 2; }
+[ "$#" -eq 0 ] && { echo "$USAGE" >&2; exit 2; }
 held=""
 child=""
 

@@ -12,7 +12,7 @@ Reduzir a carga cognitiva do usuário para ir do ponto A ao ponto B e resolver o
 
 ## Entrada
 
-- Prints do fluxo real de cliques, capturados pelo orquestrador no passo 8b da master-review com `~/.claude/skills/master-review/scripts/mobile_flow.py`, nas três telas: iPhone SE primeiro (`--device iphone-se`), tablet depois (`--device tablet`), desktop por último (`--device desktop`). Standalone, capture você mesmo com esse script. Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai cortado.
+- Prints do fluxo real de cliques, capturados pelo orquestrador no passo 8b da master-review com `~/.claude/skills/master-review/scripts/mobile_flow.py`, nas três telas: iPhone SE primeiro (`--device iphone-se`), tablet depois (`--device tablet`), desktop por último (`--device desktop`). Standalone, capture você mesmo com o `agent-browser` (skill `agent-browser-core`): `agent-browser set viewport <w> <h>`, siga os cliques e `agent-browser screenshot`. Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai cortado.
 - O diff.
 - O job to be done da spec. Sem spec, escreva o job em uma frase a partir do diff e marque como inferido.
 

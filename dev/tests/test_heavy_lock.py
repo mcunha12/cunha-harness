@@ -34,7 +34,7 @@ class HeavyLockTest(unittest.TestCase):
         dead = subprocess.Popen(["true"])
         dead.wait()
         for i in (1, 2):
-            slot = os.path.join(self.env["DEV_HEAVY_DIR"], f"slot-{i}")
+            slot = os.path.join(self.env["DEV_HEAVY_DIR"], "build", f"slot-{i}")
             os.makedirs(slot)
             with open(os.path.join(slot, "pid"), "w") as f:
                 f.write(str(dead.pid))
@@ -42,6 +42,38 @@ class HeavyLockTest(unittest.TestCase):
         result = subprocess.run(["bash", LOCK, "true"], env=self.env, timeout=10)
         self.assertEqual(result.returncode, 0)
         self.assertLess(time.time() - start, 5)
+
+
+class KindTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.env = dict(os.environ, DEV_HEAVY_DIR=os.path.join(self.tmp, "heavy"))
+        self.env.pop("DEV_HEAVY_SLOTS", None)
+
+    def test_one_build_at_a_time_by_default(self):
+        log = os.path.join(self.tmp, "log")
+        cmd = f"echo start >> {log}; sleep 1; echo end >> {log}"
+        procs = [subprocess.Popen(["bash", LOCK, "sh", "-c", cmd], env=self.env) for _ in range(3)]
+        [p.wait(timeout=30) for p in procs]
+        running, peak = 0, 0
+        with open(log) as f:
+            for line in f:
+                running += 1 if line.strip() == "start" else -1
+                peak = max(peak, running)
+        self.assertEqual(peak, 1)
+
+    def test_qa_runs_while_build_holds_its_slot(self):
+        build = subprocess.Popen(["bash", LOCK, "--kind", "build", "sleep", "3"], env=self.env)
+        time.sleep(0.7)
+        start = time.time()
+        result = subprocess.run(["bash", LOCK, "--kind", "qa", "true"], env=self.env, timeout=10)
+        self.assertEqual(result.returncode, 0)
+        self.assertLess(time.time() - start, 2)
+        build.wait(timeout=10)
+
+    def test_unknown_kind_is_refused(self):
+        result = subprocess.run(["bash", LOCK, "--kind", "deploy", "true"], env=self.env, capture_output=True)
+        self.assertEqual(result.returncode, 2)
 
 
 class OrphanSlotTest(unittest.TestCase):
@@ -65,13 +97,13 @@ class OrphanSlotTest(unittest.TestCase):
         proc.wait(timeout=5)
         time.sleep(4)
         self.assertFalse(os.path.exists(marker))
-        self.assertEqual(os.listdir(env["DEV_HEAVY_DIR"]), [])
+        self.assertEqual(os.listdir(os.path.join(env["DEV_HEAVY_DIR"], "build")), [])
 
     def test_concurrent_reclaim_never_exceeds_slots(self):
         dead = subprocess.Popen(["true"])
         dead.wait()
         for i in (1, 2):
-            slot = os.path.join(self.env["DEV_HEAVY_DIR"], f"slot-{i}")
+            slot = os.path.join(self.env["DEV_HEAVY_DIR"], "build", f"slot-{i}")
             os.makedirs(slot)
             with open(os.path.join(slot, "pid"), "w") as f:
                 f.write(str(dead.pid))
@@ -89,7 +121,7 @@ class OrphanSlotTest(unittest.TestCase):
     def test_reclaims_old_slot_without_pid_file(self):
         old = time.time() - 60
         for i in (1, 2):
-            slot = os.path.join(self.env["DEV_HEAVY_DIR"], f"slot-{i}")
+            slot = os.path.join(self.env["DEV_HEAVY_DIR"], "build", f"slot-{i}")
             os.makedirs(slot)
             os.utime(slot, (old, old))
         start = time.time()

@@ -20,13 +20,15 @@ O orquestrador roda em Opus. Ele lê o diff, decide quais especialistas rodar, d
 
 A verificação de BLOCKER/MAJOR (passo 8) é do próprio orquestrador. Ela não sai para subagent.
 
+Chamado pelo gate final do /dev, scan e correção rodam em Haiku com `effort: "medium"`. O orquestrador sobe para Sonnet `medium` o lote de correção que pedir e registra o motivo no relatório. Roast, UX e Spec seguem em Sonnet.
+
 ## Argumentos
 
 `$ARGUMENTS`
 
 | Flag | Efeito |
 |---|---|
-| `--lean` | Modo do /dev para task de risco alto. Até 5 especialistas, passados em `--only` e escolhidos pelo diff; `spec`, `roast`, `test-audit` e as checagens determinísticas não contam. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
+| `--lean` | Modo curto, para diff pequeno. O /dev não usa. Até 5 especialistas, passados em `--only` e escolhidos pelo diff; `spec`, `roast`, `test-audit` e as checagens determinísticas não contam. Piso MAJOR no scan, no relatório e na correção. Revisão visual só no iPhone SE. Relatório curto. Roast desligado, salvo com `--roast`. |
 | `--roast` | Liga o `review-roast` no modo `--lean`. Na full ele já roda. |
 | `--spec <path>` | Spec da feature (o /dev sempre passa). Liga o eixo Spec (passo 4b) e vai para o roast. |
 | `--base <branch>` | Base do diff. Padrão: config > `main` > `master` > `develop`, o primeiro que existir no remote. |
@@ -121,7 +123,7 @@ Diff com mais de ~1.500 linhas: fatie por grupos de arquivos coesos (mesmo diret
 
 front e a11y: acrescente ao prompt "Viewports de referência: iPhone SE (375×667), depois tablet (768×1024) e desktop (1280×720). Avalie layout, overflow, texto cortado e alvos de toque em cada um. Qualquer render no navegador é headless."
 
-test-audit: dispare um subagent Haiku que carrega a skill `test-audit` e roda o **Mode B (conference gate)** só em modo leitura: itens 1, 3 e 4 (ordem dos commits, fixtures com PII, classificação de cada teste adicionado ou alterado). Ele não roda testes e não edita. O resultado passa pelo adapter de `references/test-audit-adapter.md`.
+test-audit: dispare um subagent Haiku que carrega a skill `test-audit` e roda o **Mode B (conference gate)** só em modo leitura: itens 1, 3 e 4 (ordem dos commits, fixtures com PII, classificação de cada teste adicionado ou alterado). Chamado pelo /dev, o item 1 fica fora: no /dev os testes entram no fim da feature, depois do código. Ele não roda testes e não edita. O resultado passa pelo adapter de `references/test-audit-adapter.md`.
 
 ### 4b. Eixo Spec (com `--spec`)
 
@@ -131,7 +133,7 @@ Dispare um agente `model: "sonnet"`, `effort: "medium"`, com o prompt de `refere
 
 Valide cada JSON contra `references/output-contract.md`: campos obrigatórios, enums de severidade/confiança, `evidence` literal não vazia em todo achado, `fix` concreto. Saída malformada ou achado sem evidência: retome o mesmo subagent (SendMessage) uma vez, com o erro.
 
-Falhou de novo: o especialista vira **lacuna**. Lacuna não conta como aprovação: o relatório lista "lacuna: review-<tema>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, lacuna bloqueia a task até a review rodar de novo.
+Falhou de novo: o especialista vira **lacuna**. Lacuna não conta como aprovação: o relatório lista "lacuna: review-<tema>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, lacuna bloqueia o gate final até a review rodar de novo.
 
 ### 6. Dedup
 
@@ -159,7 +161,7 @@ BLOCKER exige nível 4 ou mais. Abaixo disso, escreva o script curto que prova o
 
 ### 8b. Revisão visual em celular (obrigatória com UI no diff)
 
-Diff com componente, página ou estilo: o orquestrador sobe o app (comando, URL e login de `~/.claude/dev/repos/<repo>/run.json` quando existir) e percorre cada tela alterada pelo fluxo real de cliques, primeiro no iPhone SE, depois tablet, depois desktop:
+Diff com componente, página ou estilo: o orquestrador sobe o app (comando, URL e login de `~/.claude/dev/repos/<repo>/run.json` quando existir) e percorre cada tela alterada pelo fluxo real de cliques, primeiro no iPhone SE, depois tablet, depois desktop. Build, servidor e navegador rodam dentro de um único `~/.claude/skills/dev/scripts/heavy_lock.sh --kind qa bash -c '…'`, que derruba o servidor no fim: 1 QA por vez na máquina. Chamado pelo /dev, use os `tasks/*/steps.json` da feature:
 
 ```bash
 python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <run>/shots/iphone-se --device iphone-se --steps <steps.json>
@@ -169,7 +171,16 @@ python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out 
 
 `steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (iPhone SE 375×667, DPR 2, toque; tablet 768×1024, DPR 2, toque e UA de iPad; desktop 1280×720, DPR 1).
 
-Leia cada print. `report.json` com `scroll_width` acima da largura é rolagem horizontal: achado `front`. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Com `--lean`, só iPhone SE. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, revisão visual pendente bloqueia a task.
+QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/CLAUDE.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
+- Sirva um build de produção (`next build` + `next start`), nunca `next dev`. Um build por lote de correções.
+- O fluxo de cada tela é um script (`steps.json` do `mobile_flow.py` ou Playwright) que imprime métricas e ok/falha por passo. O agente de QA roda o script; não explora clicando.
+- Limite de 30 s por passo; em falha, print e segue.
+- Fluxo completo no iPhone SE; no tablet e no desktop, só o print das telas alteradas.
+- Meça o "antes" uma vez e guarde. Não troque de commit no meio do QA.
+- Guarde os scripts no repo (`<repo>/.claude/qa/`) para a próxima rodada.
+- Um navegador e um servidor por vez; sem typecheck ou build durante o QA. Não use `timeout` no macOS.
+
+Leia cada print. `report.json` com `scroll_width` acima da largura é rolagem horizontal: achado `front`. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Com `--lean`, só iPhone SE. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, revisão visual pendente bloqueia o gate final.
 
 ### 8c. UX
 

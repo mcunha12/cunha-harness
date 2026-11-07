@@ -10,11 +10,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import devgraph  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-STEP_NAMES = {1: ("escopo", "Opus"), 2: ("leitura", "Haiku medium"), 3: ("avaliação", "Opus"),
-              4: ("testes", "Sonnet medium"), 5: ("implementação", "Sonnet medium"), 6: ("review lean", "master-review")}
+STEP_NAMES = {1: ("escopo", "Opus xhigh"), 2: ("leitura", "Haiku medium"), 3: ("avaliação", "Opus xhigh"),
+              5: ("implementação", "Haiku medium")}
+STEPS = (1, 2, 3, 5)
+MODELS = {"haiku": "Haiku medium", "sonnet": "Sonnet medium"}
 PHASES = {"requirements": "requisitos", "planning": "planejamento", "execution": "em andamento",
           "paused": "pausada", "done": "concluída"}
-GATE_STATUS = {"pending": "pendente", "running": "rodando", "passed": "passou", "blocked": "bloqueado"}
+GATE_STATUS = {"pending": "pendente", "testing": "testes finais", "tested": "testes prontos", "running": "rodando",
+               "passed": "passou", "blocked": "bloqueado"}
 CLUSTER_COLORS = ["--ca", "--cb", "--cc"]
 NODE_W, NODE_H, ROW_H = 100, 64, 100
 COLUMNS = {1: [120], 2: [10, 230], 3: [10, 120, 230]}
@@ -49,16 +52,14 @@ def _busy(state):
     return busy
 
 
-def _task_label(tid, ts, busy, cluster):
+def _task_label(tid, ts, busy):
     status = ts.get("status", "pending")
     if status == "done":
         return "concluída", "p-done", "n-done"
     if status == "blocked":
         return f"bloqueada: {ts.get('block_reason') or '?'}", "p-blocked", "n-blocked"
     if status == "implemented":
-        if tid in busy and busy[tid].get("kind") == "review_lean":
-            return "em review", "p-active", "n-active"
-        return f"aguarda review do cluster {cluster}", "p-wait", "n-wait"
+        return "aguarda merge na branch da feature", "p-wait", "n-wait"
     running = ts.get("step_running")
     if running is not None or tid in busy:
         step = running or busy.get(tid, {}).get("from_step") or (busy.get(tid, {}).get("steps") or [1])[0]
@@ -139,7 +140,7 @@ def _graph_svg(plan, state, busy):
         else:
             t = tasks[node]
             label = cluster.get(node, "")
-            _, _, cls = _task_label(node, state.get("tasks", {}).get(node, {}), busy, label)
+            _, _, cls = _task_label(node, state.get("tasks", {}).get(node, {}), busy)
             lines = _wrap(t["title"])
             parts.append(f'<rect class="{cls}" x="{x}" y="{y}" width="{NODE_W}" height="{NODE_H}" rx="8"/>')
             parts.append(f'<text x="{x + 10}" y="{y + 16}" class="sub">{e(node)} · '
@@ -163,11 +164,10 @@ def _workers(state, tasks):
             tid = a["task"]
             ts = state.get("tasks", {}).get(tid, {})
             step = ts.get("step_running") or a.get("from_step") or (a.get("steps") or [1])[0]
-            effort = tasks.get(tid, {}).get("opus_effort", "medium")
 
             def model_of(n):
-                model = STEP_NAMES.get(n, ("?", "?"))[1]
-                return f"{model} {effort}" if model == "Opus" else model
+                default = STEP_NAMES.get(n, ("?", "?"))[1]
+                return MODELS.get(a.get("model"), default) if n == 5 else default
 
             name, model = STEP_NAMES.get(step, ("?", "?"))[0], model_of(step)
             if kind == "pre_read":
@@ -176,13 +176,13 @@ def _workers(state, tasks):
                 name, model = "leitura antecipada", " + ".join(model_of(n) for n in steps)
             title = f"{tid} · {tasks.get(tid, {}).get('title', '')}"
             done = set(ts.get("steps_done", []))
-            bars = "".join(f'<i class="{"d" if n in done else "a" if n == step else ""}"></i>' for n in range(1, 7))
+            bars = "".join(f'<i class="{"d" if n in done else "a" if n == step else ""}"></i>' for n in STEPS)
             label = "passos " + "–".join(str(n) for n in a["steps"]) if kind == "pre_read" else f"passo {step}"
             detail = f"{label} · {name} · {model}"
-        elif kind == "review_lean":
-            title, detail, bars = "Review lean", ", ".join(a.get("tasks", [])) + (" · roast" if a.get("roast") else ""), ""
+        elif kind == "tests":
+            title, detail, bars = "Testes finais", f"critérios da /test-audit · {MODELS.get(a.get('model'), 'Haiku medium')}", ""
         else:
-            title, detail, bars = f"Gate {a.get('gate')}", "/master-review full", ""
+            title, detail, bars = f"Gate final {a.get('gate')}", "/master-review full + QA", ""
         cards.append(f'<div class="worker"><span class="slot">W{w["slot"]}</span><b>{e(title)}</b>'
                      f'<span class="step">{e(detail)}</span>' + (f'<div class="steps">{bars}</div>' if bars else "") + "</div>")
     return "".join(cards)
@@ -195,7 +195,7 @@ def _task_rows(plan, state, busy):
     order = sorted(plan.get("tasks", []), key=lambda t: (-ahead.get(t["id"], 0), t["id"]))
     for t in order:
         label = cluster.get(t["id"], "")
-        text, pill, _ = _task_label(t["id"], state.get("tasks", {}).get(t["id"], {}), busy, label)
+        text, pill, _ = _task_label(t["id"], state.get("tasks", {}).get(t["id"], {}), busy)
         cells = [("Cluster", f'<span class="cl" style="color:{_cluster_color(label, labels)}">{e(label)}</span>'),
                  ("Compl.", t["complexity"]), ("Risco", t["risk"]), ("Custo", devgraph.task_cost(t)),
                  ("Caminho à frente", ahead.get(t["id"], "")), ("Depende de", ", ".join(t.get("depends_on", [])) or "—"),
@@ -249,12 +249,12 @@ def render(plan, state, decisions, costs, learned, heavy=None, situation=None):
     body.append('<div class="kpis">'
                 f'<div class="kpi"><div class="v">{done} / {len(tasks)}</div><div class="l">tasks concluídas</div>'
                 f'<div class="bar"><i style="width:{pct}%"></i></div></div>'
-                f'<div class="kpi"><div class="v">{occupied} / {len(state.get("workers", [])) or 4}</div><div class="l">workers ativos</div></div>'
+                f'<div class="kpi"><div class="v">{occupied} / {len(state.get("workers", []))}</div><div class="l">workers ativos</div></div>'
                 f'<div class="kpi"><div class="v">{heavy_text}</div><div class="l">processos pesados</div></div>'
                 f'<div class="kpi"><div class="v">{passed} / {len(gates)}</div><div class="l">gates passados</div></div></div>')
     body.append(f'<section class="card"><h2>Workers agora</h2><div class="workers">{_workers(state, tasks)}</div>'
-                '<p class="src" style="margin:10px 0 0">Passos: 1 escopo · 2 leitura · 3 avaliação · 4 testes · '
-                '5 implementação · 6 review lean</p></section>')
+                '<p class="src" style="margin:10px 0 0">Passos: 1 escopo · 2 leitura · 3 avaliação · 5 implementação. '
+                'No fim: testes finais e gate final com QA.</p></section>')
     analysis = plan.get("analysis") or {}
     crit = analysis.get("critical_path", [])
     crit_cost = analysis.get("path_ahead", {}).get(crit[0], 0) if crit else 0
@@ -308,17 +308,23 @@ def _pid_alive(pid):
     return True
 
 
+HEAVY_KINDS = ("build", "qa")
+
+
 def heavy_status():
-    folder = os.environ.get("DEV_HEAVY_DIR", os.path.expanduser("~/.claude/dev/heavy"))
-    slots = int(os.environ.get("DEV_HEAVY_SLOTS", "2"))
+    root = os.environ.get("DEV_HEAVY_DIR", os.path.expanduser("~/.claude/dev/heavy"))
+    slots = int(os.environ.get("DEV_HEAVY_SLOTS", "1"))
     live = 0
-    if os.path.isdir(folder):
+    for kind in HEAVY_KINDS:
+        folder = os.path.join(root, kind)
+        if not os.path.isdir(folder):
+            continue
         for name in os.listdir(folder):
             pid_file = os.path.join(folder, name, "pid")
             if name.startswith("slot-") and os.path.isfile(pid_file):
                 with open(pid_file) as f:
                     live += any(_pid_alive(p) for p in f.read().split())
-    return live, slots
+    return live, slots * len(HEAVY_KINDS)
 
 
 def render_dir(feature_dir):

@@ -37,14 +37,6 @@ class RenderTrackerTest(unittest.TestCase):
         self.assertIn("caminho crítico (custo 48)", html)
         HTMLParser().feed(html)
 
-    def test_worker_shows_opus_effort_of_the_task(self):
-        state = copy.deepcopy(self.state)
-        state["workers"][0]["assignment"]["from_step"] = 3
-        state["tasks"]["T3"]["step_running"] = 3
-        self.assertIn("avaliação · Opus medium", render(self.plan, state, [], [], []))
-        next(t for t in self.plan["tasks"] if t["id"] == "T3")["opus_effort"] = "xhigh"
-        self.assertIn("avaliação · Opus xhigh", render(self.plan, state, [], [], []))
-
     def test_render_requirements_phase_without_plan(self):
         state = copy.deepcopy(self.state)
         state.update(phase="requirements", tasks={}, gates={})
@@ -80,23 +72,23 @@ class RenderTrackerTest(unittest.TestCase):
         finally:
             del os.environ["CODE_GUARD_HOME"]
 
-    def test_heavy_kpi_uses_configured_slots_and_live_pids(self):
+    def test_heavy_kpi_counts_live_build_and_qa_slots(self):
         tmp = tempfile.mkdtemp()
-        for i, pid in ((1, os.getpid()), (2, 999999)):
-            os.makedirs(os.path.join(tmp, f"slot-{i}"))
-            with open(os.path.join(tmp, f"slot-{i}", "pid"), "w") as f:
+        for kind, pid in (("build", os.getpid()), ("qa", 999999)):
+            os.makedirs(os.path.join(tmp, kind, "slot-1"))
+            with open(os.path.join(tmp, kind, "slot-1", "pid"), "w") as f:
                 f.write(str(pid))
-        os.environ.update(DEV_HEAVY_DIR=tmp, DEV_HEAVY_SLOTS="3")
+        os.environ["DEV_HEAVY_DIR"] = tmp
         try:
             from render_tracker import heavy_status
-            self.assertEqual(heavy_status(), (1, 3))
+            self.assertEqual(heavy_status(), (1, 2))
         finally:
-            del os.environ["DEV_HEAVY_DIR"], os.environ["DEV_HEAVY_SLOTS"]
+            del os.environ["DEV_HEAVY_DIR"]
 
     @unittest.skipUnless(os.path.exists("/usr/bin/python3"), "sem python do sistema")
     def test_scripts_compile_on_system_python(self):
         scripts = [os.path.join(ROOT, d, "scripts", n) for d, n in (
-            ("dev", "devgraph.py"), ("dev", "devstate.py"), ("dev", "render_tracker.py"),
+            ("dev", "devgraph.py"), ("dev", "devstate.py"), ("dev", "render_tracker.py"), ("dev", "capacity.py"),
             ("master-review", "mobile_flow.py"), ("code-guard", "ledger.py"),
             ("code-guard", "check_budget.py"), ("code-guard", "overlay.py"))]
         result = subprocess.run(["/usr/bin/python3", "-c",

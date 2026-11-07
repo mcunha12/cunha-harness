@@ -9,12 +9,14 @@ Sem `scope.md` (task de complexidade até 3): antes do plano, grave {{feature_di
 
 Leia `baseline_failures` em {{feature_dir}}/state.json: são falhas que já existem na base. Não planeje investigá-las.
 
-Decida e escreva:
-1. Arquivos a criar e a mudar, com a mudança de cada um em uma linha e as assinaturas novas exatas.
-2. Casos de teste de integração ou E2E (spec observável), com o dado real que cada um precisa. Unit test só para função pura de cálculo ou parsing.
-3. Comandos de verificação: type-check, lint e testes só dos arquivos tocados, cada um prefixado por `~/.claude/skills/dev/scripts/heavy_lock.sh` e com workers limitados (`--maxWorkers=2`).
-4. Fluxo de cliques (`steps.json` do mobile_flow.py) se a task tem UI.
+Escreva o plano nesta ordem:
+1. Primeira linha: o modelo do passo 5. `modelo: haiku` é o padrão. `modelo: sonnet — <motivo>` só para lógica nova não trivial, 5 ou mais regras de negócio, ou task que já falhou no Haiku.
+2. Arquivos a criar e a mudar, com a mudança de cada um em uma linha e as assinaturas novas exatas.
+3. Seção "Comportamentos": cada comportamento observável que a task muda (entrada → saída que o usuário ou o consumidor vê), com o dado real que prova cada um. Os testes finais da feature partem desta seção. O passo 5 não escreve teste.
+4. Comandos de verificação do passo 5: type-check, lint e os testes que já existem para os arquivos tocados, cada um prefixado por `~/.claude/skills/dev/scripts/heavy_lock.sh` e com workers limitados (`--maxWorkers=2`).
 5. Domínios da code-guard que o passo 5 deve carregar.
 
+Task com UI: grave também {{feature_dir}}/tasks/{{task_id}}/steps.json com o fluxo de cliques de cada tela alterada, no formato do `mobile_flow.py`. O QA do gate final roda esse fluxo.
+
 Grave em {{feature_dir}}/tasks/{{task_id}}/plan.md. PT-BR, STE Operacional.
-Devolva só o caminho do arquivo e até 5 linhas de resumo.
+Devolva só o caminho do arquivo e até 5 linhas de resumo. A primeira linha do resumo é o modelo do passo 5.
