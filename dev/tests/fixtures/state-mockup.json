@@ -20,7 +20,6 @@
     1,
     2,
     3,
-    4,
     5
    ],
    "step_running": null,
@@ -36,7 +35,6 @@
     1,
     2,
     3,
-    4,
     5
    ],
    "step_running": null,
@@ -51,8 +49,7 @@
    "steps_done": [
     1,
     2,
-    3,
-    4
+    3
    ],
    "step_running": 5,
    "branch": null,
@@ -67,7 +64,6 @@
     1,
     2,
     3,
-    4,
     5
    ],
    "step_running": null,
@@ -122,10 +118,6 @@
   "G1": {
    "status": "pending",
    "report": null
-  },
-  "G2": {
-   "status": "pending",
-   "report": null
   }
  },
  "workers": [
@@ -155,20 +147,10 @@
    "started_at": null
   }
  ],
- "reviews": [
-  {
-   "id": "R1",
-   "kind": "lean",
-   "tasks": [
-    "T1"
-   ],
-   "report": "reviews/R1.md",
-   "tokens": 58000
-  }
- ],
+ "reviews": [],
  "checkpoint": {
   "at": "2026-10-21T14:32:00",
-  "note": "T3 passo 4 concluído"
+  "note": "T3 passo 5 iniciado"
  },
  "paused": null
 }

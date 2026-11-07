@@ -41,11 +41,11 @@ class DevgraphCoreTest(unittest.TestCase):
         self.assertEqual(task_cost(self.task("T4")), 2)
 
     def test_path_ahead(self):
-        self.assertEqual(path_ahead(self.plan), {"T1": 48, "T2": 21, "T3": 33, "T4": 23, "T5": 21, "G1": 12,
-                                                 "T6": 12, "T7": 8, "T8": 4, "G2": 0})
+        self.assertEqual(path_ahead(self.plan), {"T1": 48, "T2": 21, "T3": 33, "T4": 23, "T5": 21,
+                                                 "T6": 12, "T7": 8, "T8": 4, "G1": 0})
 
     def test_critical_path(self):
-        self.assertEqual(critical_path(self.plan), ["T1", "T3", "T5", "G1", "T6", "T8", "G2"])
+        self.assertEqual(critical_path(self.plan), ["T1", "T3", "T5", "T6", "T8", "G1"])
 
     def test_cycle(self):
         plan = copy.deepcopy(self.plan)
@@ -57,32 +57,28 @@ class DevgraphCoreTest(unittest.TestCase):
         extra = copy.deepcopy(self.task("T4"))
         extra.update(id="T9", depends_on=["T99"])
         plan["tasks"].append(extra)
-        plan["gates"][1]["waits_for"].append("T9")
+        plan["gates"][0]["waits_for"].append("T9")
         self.assertIn({"code": "unknown_dependency", "node": "T9", "dep": "T99"}, validate(plan))
 
     def test_missing_final_gate(self):
         plan = copy.deepcopy(self.plan)
-        plan["gates"] = [g for g in plan["gates"] if g["id"] != "G2"]
+        plan["gates"] = []
         self.assertIn("missing_final_gate", [e["code"] for e in validate(plan)])
 
-    def test_too_many_tasks_between_gates(self):
-        self.assertIn({"code": "too_many_tasks_between_gates", "gate": "G1", "count": 7},
-                      validate(chain_plan(7, ["T7"])))
+    def test_intermediate_gate_is_rejected(self):
+        plan = copy.deepcopy(self.plan)
+        plan["gates"].insert(0, {"id": "G0", "title": "backend fechado", "waits_for": ["T2", "T5"]})
+        for tid in ("T6", "T7"):
+            self.task_in(plan, tid)["depends_on"] = ["G0"]
+        self.assertEqual(validate(plan), [{"code": "intermediate_gate", "gate": "G0"}])
+
+    def test_long_chain_needs_no_gate_in_the_middle(self):
+        self.assertEqual(validate(chain_plan(9, ["T9"])), [])
 
     def test_invalid_score(self):
         plan = copy.deepcopy(self.plan)
         self.task_in(plan, "T1")["risk"] = 6
         self.assertIn({"code": "invalid_score", "task": "T1", "field": "risk"}, validate(plan))
-
-    def test_invalid_opus_effort(self):
-        plan = copy.deepcopy(self.plan)
-        self.task_in(plan, "T1")["opus_effort"] = "high"
-        self.assertIn({"code": "invalid_opus_effort", "task": "T1"}, validate(plan))
-
-    def test_xhigh_opus_effort_is_valid(self):
-        plan = copy.deepcopy(self.plan)
-        self.task_in(plan, "T1")["opus_effort"] = "xhigh"
-        self.assertEqual(validate(plan), [])
 
     @staticmethod
     def task_in(plan, tid):
@@ -118,11 +114,7 @@ class AffinityTest(unittest.TestCase):
         self.assertEqual(len(affinity_clusters(plan)), 2)
 
 
-def free_worker(state, slot=1):
-    state["workers"][slot - 1]["assignment"] = None
-
-
-def set_task(state, tid, status, steps=(1, 2, 3, 4, 5)):
+def set_task(state, tid, status, steps=(1, 2, 3, 5)):
     state["tasks"][tid].update(status=status, steps_done=list(steps), step_running=None)
 
 
@@ -139,19 +131,18 @@ class SchedulerTest(unittest.TestCase):
             w["assignment"] = None
         return state
 
-    def test_mockup_moment_merges_low_risk_and_fills_with_scope_only(self):
+    def test_mockup_moment_merges_implemented_and_fills_with_scope_only(self):
         self.assertEqual(next_assignments(self.plan, self.state, 3),
                          [{"kind": "merge", "task": "T2"},
                           {"kind": "merge", "task": "T4"},
                           {"kind": "pre_read", "task": "T6", "steps": [1]}])
 
-    def test_low_risk_implemented_is_merged_without_lean_review(self):
-        state = copy.deepcopy(self.state)
-        free_worker(state)
-        set_task(state, "T3", "implemented")
-        out = next_assignments(self.plan, state, 1)
-        self.assertNotIn("review_lean", [a["kind"] for a in out])
-        self.assertIn({"kind": "merge", "task": "T3"}, out)
+    def test_high_risk_implemented_is_merged_without_review(self):
+        state = self.fresh_state()
+        set_task(state, "T1", "implemented")
+        out = next_assignments(self.plan, state, 4)
+        self.assertIn({"kind": "merge", "task": "T1"}, out)
+        self.assertEqual([a for a in out if a["kind"] not in ("merge", "task", "pre_read")], [])
 
     def test_merge_does_not_take_a_worker_slot(self):
         state = self.fresh_state()
@@ -161,31 +152,48 @@ class SchedulerTest(unittest.TestCase):
         self.assertIn({"kind": "merge", "task": "T4"}, out)
         self.assertEqual(len([a for a in out if a["kind"] != "merge"]), 1)
 
-    def test_high_risk_reviewed_alone(self):
+    def all_done(self, gate_status):
         state = self.fresh_state()
-        set_task(state, "T1", "implemented")
-        self.assertIn({"kind": "review_lean", "tasks": ["T1"], "roast": True}, next_assignments(self.plan, state, 4))
+        for tid in state["tasks"]:
+            set_task(state, tid, "done")
+        state["gates"]["G1"]["status"] = gate_status
+        return next_assignments(self.plan, state, 4)
 
-    def test_no_stacking_on_high_risk(self):
+    def test_final_tests_come_before_the_gate(self):
+        self.assertEqual(self.all_done("pending"), [{"kind": "tests", "gate": "G1"}])
+
+    def test_gate_runs_after_final_tests(self):
+        self.assertEqual(self.all_done("tested"), [{"kind": "gate", "gate": "G1"}])
+
+    def test_nothing_is_dispatched_again_while_final_tests_or_gate_run(self):
+        self.assertEqual(self.all_done("testing"), [])
+        self.assertEqual(self.all_done("running"), [])
+
+    def test_old_plan_intermediate_gate_no_longer_blocks(self):
+        plan = copy.deepcopy(self.plan)
+        plan["gates"].insert(0, {"id": "G0", "title": "backend fechado", "waits_for": ["T2", "T5"]})
+        for t in plan["tasks"]:
+            if t["id"] in ("T6", "T7"):
+                t["depends_on"] = ["G0"]
         state = self.fresh_state()
-        set_task(state, "T1", "implemented")
-        kinds = [(a["kind"], a.get("task")) for a in next_assignments(self.plan, state, 4)]
-        self.assertNotIn(("task", "T2"), kinds)
-
-
-    def test_gate_ready(self):
-        state = self.fresh_state()
+        state["gates"]["G0"] = {"status": "pending", "report": None}
         for tid in ("T1", "T2", "T3", "T4", "T5"):
             set_task(state, tid, "done")
-        self.assertIn({"kind": "gate", "gate": "G1"}, next_assignments(self.plan, state, 4))
+        out = next_assignments(plan, state, 4)
+        self.assertIn("T6", [a.get("task") for a in out if a["kind"] == "task"])
+        self.assertNotIn("G0", [a.get("gate") for a in out])
+
+    def test_gate_waits_for_every_task(self):
+        state = self.fresh_state()
+        for tid in ("T1", "T2", "T3", "T4", "T5", "T6", "T7"):
+            set_task(state, tid, "done")
+        self.assertNotIn("tests", [a["kind"] for a in next_assignments(self.plan, state, 4)])
 
     def test_stack_inside_cluster(self):
-        plan = copy.deepcopy(self.plan)
-        plan["tasks"][0]["risk"] = 3
         state = self.fresh_state()
         set_task(state, "T1", "implemented")
         self.assertIn({"kind": "task", "task": "T2", "from_step": 2, "stack_on": "T1"},
-                      next_assignments(plan, state, 4))
+                      next_assignments(self.plan, state, 4))
 
     def test_priority_by_path_ahead(self):
         state = self.fresh_state()
@@ -203,12 +211,10 @@ class SchedulerTest(unittest.TestCase):
         self.assertNotIn("T2", [a.get("task") for a in out if a["kind"] == "pre_read"])
 
     def test_small_task_has_no_separate_scope_step(self):
-        small = {"complexity": 3, "changes_behavior": True}
-        self.assertEqual(required_steps(small), [2, 3, 4, 5])
-        self.assertEqual(required_steps({**small, "changes_behavior": False}), [2, 3, 5])
+        self.assertEqual(required_steps({"complexity": 3, "changes_behavior": True}), [2, 3, 5])
 
     def test_large_task_keeps_scope_step(self):
-        self.assertEqual(required_steps({"complexity": 4, "changes_behavior": True}), [1, 2, 3, 4, 5])
+        self.assertEqual(required_steps({"complexity": 4, "changes_behavior": True}), [1, 2, 3, 5])
 
     def test_small_future_task_gets_no_pre_read(self):
         state = self.fresh_state()

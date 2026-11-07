@@ -127,7 +127,8 @@
    "complexity": 4,
    "risk": 2,
    "depends_on": [
-    "G1"
+    "T2",
+    "T5"
    ],
    "changes_behavior": true,
    "has_ui": true
@@ -149,7 +150,8 @@
    "complexity": 2,
    "risk": 2,
    "depends_on": [
-    "G1"
+    "T2",
+    "T5"
    ],
    "changes_behavior": true,
    "has_ui": true
@@ -183,15 +185,7 @@
  "gates": [
   {
    "id": "G1",
-   "title": "backend fechado",
-   "waits_for": [
-    "T2",
-    "T5"
-   ]
-  },
-  {
-   "id": "G2",
-   "title": "feature completa",
+   "title": "gate final",
    "waits_for": [
     "T8"
    ]
