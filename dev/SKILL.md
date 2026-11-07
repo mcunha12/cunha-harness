@@ -29,6 +29,7 @@ A sessão principal é o orquestrador. Ela guarda estado, chama os scripts e dis
 7. Push e abertura de MR pedem confirmação do Marcelo.
 8. Ao Marcelo vão só os marcos: task `done` ou `blocked`, gate com status novo, decisão que muda o quê, pedido de confirmação. Notificação de especialista ou de passo não vira mensagem: ela vai para o estado e para o tracker.
 9. O orquestrador manda no andamento. Ele nunca devolve "rode /dev resume" ao Marcelo: a feature na fila começa sozinha quando a que ela espera fecha. Decisão de como fazer (layout, nome de componente, ordem de tasks) é dele e vai ao Marcelo em uma linha, sem pedir confirmação. Ao Marcelo vai só o que muda o quê (escopo, regra de negócio, dado).
+10. Uma feature por vez, com o máximo de subagents em paralelo dentro dela (26/10/2026). Nenhum agente trabalha para outra feature enquanto a ativa não fecha, nem leitura ou preparo de retomada: a fila só anda quando a ativa chega a `done`. Dentro da feature ativa, todo trabalho sem dependência aberta sai na mesma mensagem: passos de tasks diferentes, QA fatiado por tela, prints de antes na base enquanto a task implementa, scan dos especialistas, descrição do PR, seed para teste manual, test-audit final. O modelo de cada agente segue a seção 5 pelo escopo. O limite de 4 workers vale só para tasks que editam código ao mesmo tempo; agente que só lê, mede ou escreve fora do repo não ocupa worker. Comando pesado continua no `heavy_lock.sh`.
 
 ## 3. Fluxo
 

@@ -169,6 +169,15 @@ python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out 
 
 `steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (iPhone SE 375×667, DPR 2, toque; tablet 768×1024, DPR 2, toque e UA de iPad; desktop 1280×720, DPR 1).
 
+QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/CLAUDE.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
+- Sirva um build de produção (`next build` + `next start`), nunca `next dev`. Um build por lote de correções.
+- O fluxo de cada tela é um script (`steps.json` do `mobile_flow.py` ou Playwright) que imprime métricas e ok/falha por passo. O agente de QA roda o script; não explora clicando.
+- Limite de 30 s por passo; em falha, print e segue.
+- Fluxo completo no iPhone SE; no tablet e no desktop, só o print das telas alteradas.
+- Meça o "antes" uma vez e guarde. Não troque de commit no meio do QA.
+- Guarde os scripts no repo (`<repo>/.claude/qa/`) para a próxima rodada.
+- Um navegador e um servidor por vez; sem typecheck ou build durante o QA. Não use `timeout` no macOS.
+
 Leia cada print. `report.json` com `scroll_width` acima da largura é rolagem horizontal: achado `front`. Defeito visual vira achado `front` ou `a11y`, com o print e o viewport. Com `--lean`, só iPhone SE. Sem navegador disponível, o relatório registra "revisão visual pendente: <telas>" e o veredito não passa de **APROVAR COM RESSALVAS**. Chamado pelo /dev, revisão visual pendente bloqueia a task.
 
 ### 8c. UX
