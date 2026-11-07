@@ -10,9 +10,6 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-WORKERS = 4
-
-
 def _now():
     return datetime.datetime.now().replace(microsecond=0).isoformat()
 
@@ -59,7 +56,7 @@ def new_task_state():
 def init(feature_dir, feature, repos):
     os.makedirs(feature_dir, exist_ok=True)
     return {"feature": feature, "phase": "requirements", "repos": repos, "tasks": {}, "gates": {},
-            "workers": [{"slot": i, "assignment": None, "started_at": None} for i in range(1, WORKERS + 1)],
+            "workers": [],
             "reviews": [], "checkpoint": {"at": _now(), "note": "feature criada"}, "paused": None}
 
 
@@ -72,6 +69,17 @@ class StepConflict(Exception):
     pass
 
 
+# O número de workers sai do capacity.py a cada volta do loop, então o slot nasce quando é usado.
+def _slot(state, slot):
+    for w in state["workers"]:
+        if w["slot"] == slot:
+            return w
+    w = {"slot": slot, "assignment": None, "started_at": None}
+    state["workers"].append(w)
+    state["workers"].sort(key=lambda x: x["slot"])
+    return w
+
+
 def step_started(state, task, step, slot, force=False):
     s = copy.deepcopy(state)
     ts = s["tasks"].setdefault(task, new_task_state())
@@ -79,14 +87,13 @@ def step_started(state, task, step, slot, force=False):
     if not force and (step in ts["steps_done"] or ts["step_running"] == step):
         raise StepConflict(f"{task} passo {step} já está {'feito' if step in ts['steps_done'] else 'rodando'}; use --force para refazer")
     ts["step_running"] = step
-    for w in s["workers"]:
-        if w["slot"] == slot:
-            w["assignment"] = w.get("assignment") or {"kind": "task", "task": task, "from_step": step}
-            w["started_at"] = _now()
+    w = _slot(s, slot)
+    w["assignment"] = w.get("assignment") or {"kind": "task", "task": task, "from_step": step}
+    w["started_at"] = _now()
     return _checkpoint(s, f"{task} passo {step} iniciado")
 
 
-def step_done(state, task, step, output=None, required=(1, 2, 3, 4, 5)):
+def step_done(state, task, step, output=None, required=(1, 2, 3, 5)):
     s = copy.deepcopy(state)
     ts = s["tasks"].setdefault(task, new_task_state())
     if step not in ts["steps_done"]:
@@ -131,10 +138,9 @@ def set_gate_status(state, gate, status, report=None):
 
 def set_worker(state, slot, assignment):
     s = copy.deepcopy(state)
-    for w in s["workers"]:
-        if w["slot"] == slot:
-            w["assignment"] = assignment
-            w["started_at"] = _now() if assignment else None
+    w = _slot(s, slot)
+    w["assignment"] = assignment
+    w["started_at"] = _now() if assignment else None
     return s
 
 
@@ -144,12 +150,18 @@ def set_phase(state, phase):
     return _checkpoint(s, f"fase: {phase}")
 
 
+REOPEN_ON_PAUSE = {"testing": "pending", "running": "tested"}
+
+
 def pause(state, reason):
     s = copy.deepcopy(state)
     for ts in s["tasks"].values():
         ts["step_running"] = None
     for w in s["workers"]:
         w["assignment"], w["started_at"] = None, None
+    # Testes finais e gate recomeçam na retomada; parados em "testing" ou "running", o agendador nunca os redispararia.
+    for g in s["gates"].values():
+        g["status"] = REOPEN_ON_PAUSE.get(g["status"], g["status"])
     s["paused"] = {"at": _now(), "reason": reason, "phase_before": s["phase"]}
     s["phase"] = "paused"
     return _checkpoint(s, f"pausada: {reason}")
@@ -200,12 +212,12 @@ def _required_for(feature_dir, task):
         with open(os.path.join(feature_dir, "plan.json")) as f:
             plan = json.load(f)
     except FileNotFoundError:
-        return (1, 2, 3, 4, 5)
+        return (1, 2, 3, 5)
     from devgraph import required_steps
     for t in plan.get("tasks", []):
         if t["id"] == task:
             return required_steps(t)
-    return (1, 2, 3, 4, 5)
+    return (1, 2, 3, 5)
 
 
 def _save(feature_dir, state):

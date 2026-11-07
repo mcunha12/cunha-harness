@@ -6,9 +6,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-MAX_TASKS_BETWEEN_GATES = 6
-
-
 def load_plan(path):
     with open(path) as f:
         return json.load(f)
@@ -69,9 +66,6 @@ def _find_cycles(deps):
     return cycles
 
 
-OPUS_EFFORTS = ("medium", "xhigh")
-
-
 def task_cost(task):
     if "waits_for" in task:
         return 0
@@ -88,8 +82,6 @@ def validate(plan):
             value = t.get(field)
             if not isinstance(value, int) or not 1 <= value <= 5:
                 errors.append({"code": "invalid_score", "task": tid, "field": field})
-        if t.get("opus_effort", "medium") not in OPUS_EFFORTS:
-            errors.append({"code": "invalid_opus_effort", "task": tid})
     for node, ds in deps.items():
         for d in ds:
             if d not in deps:
@@ -99,18 +91,11 @@ def validate(plan):
     if cycles:
         return errors
     dependents = _dependents(plan)
-    all_tasks = set(tasks)
-    has_final = any(not dependents[g] and all_tasks <= _ancestors(deps, g) for g in gates)
-    if tasks and not has_final:
+    finals = [g for g in gates if not dependents[g] and set(tasks) <= _ancestors(deps, g)]
+    if tasks and not finals:
         errors.append({"code": "missing_final_gate"})
-    for gid in gates:
-        anc = _ancestors(deps, gid)
-        covered = set()
-        for other in anc & set(gates):
-            covered |= _ancestors(deps, other)
-        count = len((anc & all_tasks) - covered)
-        if count > MAX_TASKS_BETWEEN_GATES:
-            errors.append({"code": "too_many_tasks_between_gates", "gate": gid, "count": count})
+    # Gate único, no fim da feature (07/11/2026): qualquer outro gate é erro de plano.
+    errors.extend({"code": "intermediate_gate", "gate": gid} for gid in gates if gid not in finals[:1])
     return errors
 
 
@@ -209,19 +194,15 @@ def analyze(plan):
     return plan
 
 
-HIGH_RISK = 4
-
-
 # Até esta complexidade o passo 3 também escreve o escopo: dois Opus relendo os mesmos arquivos custaram 190 mil tokens por task (ranking-fellowship, 21/10/2026).
 SCOPE_MERGED_UP_TO = 3
 
 
+# O passo 4 (testes antes do código) saiu em 07/11/2026; o 5 mantém o número para não quebrar estados antigos.
 def required_steps(task):
-    steps = [1, 2, 3, 4, 5]
+    steps = [1, 2, 3, 5]
     if task.get("complexity", 5) <= SCOPE_MERGED_UP_TO:
         steps.remove(1)
-    if not task.get("changes_behavior", True):
-        steps.remove(4)
     return steps
 
 
@@ -238,7 +219,7 @@ def _in_flight(state):
         if ts.get("step_running") is not None:
             busy_tasks.add(tid)
     for gid, gs in state.get("gates", {}).items():
-        if gs.get("status") == "running":
+        if gs.get("status") in ("testing", "running"):
             busy_gates.add(gid)
     return busy_tasks, busy_gates
 
@@ -251,20 +232,24 @@ def next_assignments(plan, state, free_slots):
         tid: label for label, members in affinity_clusters(plan).items() for tid in members}
     tstate, gstate = state.get("tasks", {}), state.get("gates", {})
     busy_tasks, busy_gates = _in_flight(state)
+    deps, dependents = _deps(plan), _dependents(plan)
 
     def status(tid):
         return tstate.get(tid, {}).get("status", "pending")
 
-    def high_risk(tid):
-        return tasks[tid]["risk"] >= HIGH_RISK
+    def gate_status(gid):
+        return gstate.get(gid, {}).get("status", "pending")
+
+    def tasks_done_before(gid):
+        return all(status(t) == "done" for t in _ancestors(deps, gid) if t in tasks)
 
     def dep_ok(dep, tid):
         if dep in gates:
-            return gstate.get(dep, {}).get("status") == "passed"
+            # Gate intermediário de plano antigo não roda mais: vale como passado quando as tasks dele fecham.
+            return gate_status(dep) == "passed" or (bool(dependents.get(dep)) and tasks_done_before(dep))
         if status(dep) == "done":
             return True
-        return (status(dep) == "implemented" and cluster_of.get(dep) == cluster_of.get(tid)
-                and not high_risk(dep) and dep not in busy_tasks)
+        return status(dep) == "implemented" and cluster_of.get(dep) == cluster_of.get(tid) and dep not in busy_tasks
 
     def stack_on(tid):
         stacked = [d for d in tasks[tid].get("depends_on", []) if d in tasks and status(d) == "implemented"]
@@ -279,17 +264,15 @@ def next_assignments(plan, state, free_slots):
         steps = [n for n in required_steps(tasks[tid]) if n not in done]
         out.append({"kind": "task", "task": tid, "from_step": steps[0] if steps else 5, "stack_on": stack_on(tid)})
 
-    implemented = [tid for tid in tasks if status(tid) == "implemented" and tid not in busy_tasks]
-    # Risco baixo ou médio vai direto para a branch da feature; quem revisa é o gate.
-    merges = [{"kind": "merge", "task": tid} for tid in implemented if not high_risk(tid)]
-    for tid in implemented:
-        if high_risk(tid):
-            out.append({"kind": "review_lean", "tasks": [tid], "roast": True})
+    # Sem review por task: toda task implementada entra na branch da feature e o gate final revisa o diff inteiro.
+    merges = [{"kind": "merge", "task": tid} for tid in tasks if status(tid) == "implemented" and tid not in busy_tasks]
 
-    for gid, g in gates.items():
-        if gstate.get(gid, {}).get("status", "pending") == "pending" and gid not in busy_gates \
-                and all(status(t) == "done" for t in g.get("waits_for", []) if t in tasks) \
-                and all(gstate.get(x, {}).get("status") == "passed" for x in g.get("waits_for", []) if x in gates):
+    for gid in gates:
+        if dependents.get(gid) or gid in busy_gates:
+            continue
+        if gate_status(gid) == "pending" and tasks_done_before(gid):
+            out.append({"kind": "tests", "gate": gid})
+        elif gate_status(gid) == "tested":
             out.append({"kind": "gate", "gate": gid})
 
     busy_files = set()

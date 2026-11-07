@@ -30,19 +30,17 @@ Risco:
 | 4 | contrato entre serviços, autenticação, dinheiro, dado de usuário |
 | 5 | migration de schema, dado irreversível, segurança |
 
-Risco 4 ou 5 = risco alto: review lean sozinha e com roast. Risco 1 a 3 vai para a branch da feature sem review lean; o gate revisa.
+O risco entra no custo da task (complexidade × risco) e na prioridade do agendador. Nenhuma task tem review própria: o gate final revisa o diff inteiro.
 
-Esforço do Opus (passos 1 e 3): `opus_effort` é `medium` por padrão. Marque `xhigh` quando a task tem complexidade 4 ou 5, ou 5 ou mais regras de negócio no `done_when` e na spec da task. Na dúvida, pergunte ao Marcelo antes de publicar o plano, com a task e o motivo. Toda task em `xhigh` vira decisão em `decisions.jsonl`, com o motivo.
+Os passos 1 e 3 rodam em Opus `xhigh` em toda task. O modelo do passo 5 (Haiku `medium` ou Sonnet `medium`) é decisão do passo 3.
 
-## 3. Gates
+`changes_behavior` marca a task cujo comportamento os testes finais cobrem.
 
-1. Sempre há um gate final, depois da última task.
-2. Gate depois do conjunto de tasks que congela um contrato (API, schema, evento, tipo compartilhado) consumido por task de outro cluster ou repo.
-3. No máximo 6 tasks entre dois gates.
-4. O gate entra no fechamento de cluster sempre que isso não contraria as regras 2 e 3.
-5. Feature com vários repos: o gate roda uma /master-review full por repo, com os outros repos em `related_repos`.
+## 3. Gate final
 
-O gate passa quando a review full termina sem BLOCKER e sem MAJOR depois da correção.
+O plano tem um gate só, o final, que espera todas as tasks. Nenhuma task depende dele. `devgraph.py validate` recusa qualquer outro gate com `intermediate_gate` (07/11/2026).
+
+Antes do gate rodam os testes finais. O gate é a /master-review full com QA, uma por repo, com os outros repos em `related_repos`. Ele passa quando a review termina sem BLOCKER e sem MAJOR depois da correção.
 
 ## 4. Validar e analisar
 
@@ -64,6 +62,6 @@ curl -sf http://localhost:4777/health >/dev/null || (nohup python3 ~/.claude/ski
 echo "http://localhost:4777/f/<slug>"
 ```
 
-Baseline de falhas: rode uma vez, na base, os testes da área que o plano toca (via `heavy_lock.sh`, workers limitados) e grave os que já falham com `devstate.py baseline <dir> '<json-list>'`. Implementador, revisor e gate leem `state.baseline_failures` e não reinvestigam essas falhas. Em ranking-fellowship (21/10/2026), a falha do card 17205 foi investigada em 4 lugares.
+Baseline de falhas: rode uma vez, na base, os testes da área que o plano toca (via `heavy_lock.sh`, workers limitados) e grave os que já falham com `devstate.py baseline <dir> '<json-list>'`. Implementador, testes finais e gate leem `state.baseline_failures` e não reinvestigam essas falhas. Em ranking-fellowship (21/10/2026), a falha do card 17205 foi investigada em 4 lugares.
 
 A página aberta pelo localhost se atualiza sozinha a cada checkpoint, sem recarregar e sem perder a rolagem. Aberta como arquivo, ela recarrega a cada 10 s. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.

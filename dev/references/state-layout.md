@@ -8,8 +8,9 @@
     plan.json         # Fase 2; devgraph.py analyze preenche "analysis"
     decisions.jsonl   # uma decisão por linha
     costs.jsonl       # um registro por agente
-    tasks/<id>/scope.md, reading.md, plan.md, result.json
-    reviews/<id>.md
+    tasks/<id>/scope.md, reading.md, plan.md, steps.json, result.json
+    final-tests/<repo>.md
+    reviews/<gate>.md
     situation.json    # bloco "Situação agora", escrito pelo Haiku nos marcos
     tracker.html      # gerado; nunca edite
   repos/<repo>/run.json
@@ -27,16 +28,16 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
   "tasks": [
     {"id": "T1", "title": "Tabela de preferências", "description": "…", "done_when": "…",
      "repo": "api-bff", "files_hint": ["db/migrations/001.sql"], "read_list": ["src/reminders/"],
-     "complexity": 3, "risk": 5, "opus_effort": "medium", "depends_on": [], "changes_behavior": true, "has_ui": false}
+     "complexity": 3, "risk": 5, "depends_on": [], "changes_behavior": true, "has_ui": false}
   ],
-  "gates": [{"id": "G1", "title": "backend fechado", "waits_for": ["T2", "T5"]}],
+  "gates": [{"id": "G1", "title": "gate final", "waits_for": ["T5"]}],
   "analysis": {"costs": {}, "path_ahead": {}, "critical_path": [], "clusters": {}, "task_cluster": {}}
 }
 ```
 
-- Task depois de um gate leva o id do gate em `depends_on`.
+- Um gate só, o final. Nenhuma task depende dele.
 - Uma task toca um repo só.
-- `opus_effort`: `medium` (padrão, pode faltar) ou `xhigh`. Vale para os passos 1 e 3.
+- `changes_behavior`: a task entra nos testes finais.
 
 ## state.json
 
@@ -49,17 +50,19 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
   "tasks": {"T1": {"status": "pending | implemented | done | blocked", "steps_done": [1, 2],
                    "step_running": null, "branch": "dev/lembrete-aula/T1", "worktree": null,
                    "stack_on": null, "block_reason": null, "outputs": {"1": "tasks/T1/scope.md"}}},
-  "gates": {"G1": {"status": "pending | running | passed | blocked", "report": null}},
+  "gates": {"G1": {"status": "pending | testing | tested | running | passed | blocked", "report": null}},
   "workers": [{"slot": 1, "assignment": null, "started_at": null}],
-  "reviews": [{"id": "R1", "kind": "lean | full", "tasks": ["T1"], "report": "reviews/R1.md", "tokens": null}],
-  "checkpoint": {"at": "2026-10-21T14:32:00", "note": "T3 passo 4 concluído"},
+  "reviews": [{"id": "R1", "kind": "full", "tasks": ["T1"], "report": "reviews/G1.md", "tokens": null}],
+  "checkpoint": {"at": "2026-10-21T14:32:00", "note": "T3 passo 5 concluído"},
   "paused": null,
   "baseline_failures": ["src/test/a.test.ts > caso"]
 }
 ```
 
-- `implemented` = passos obrigatórios concluídos, sem review. `done` = a task entrou na branch da feature: depois da review lean (risco 4 e 5) ou direto (risco 1 a 3).
-- Passos obrigatórios: 1, 2, 3, 4, 5; sem o 1 quando a complexidade é até 3; sem o 4 quando `changes_behavior` é falso.
+- `implemented` = passos obrigatórios concluídos. `done` = a task entrou na branch da feature, por merge logo depois do `implemented`.
+- Passos obrigatórios: 1, 2, 3, 5; sem o 1 quando a complexidade é até 3. O passo 4 não existe desde 07/11/2026.
+- Gate: `pending` → `testing` (testes finais) → `tested` → `running` (master-review e QA) → `passed` ou `blocked`. `/dev stop` devolve `testing` a `pending` e `running` a `tested`.
+- `workers`: o slot nasce no primeiro uso. O total de slots livres vem do `capacity.py`.
 
 ## Logs
 
@@ -82,7 +85,7 @@ devstate.py init <dir> <feature> <repos.json>
 devstate.py step-started <dir> <task> <step> <slot> [--force]   # exit 3 = passo já feito ou rodando
 devstate.py step-done <dir> <task> <step> [output]
 devstate.py task-status <dir> <task> <pending|implemented|done|blocked> [motivo]
-devstate.py gate-status <dir> <gate> <pending|running|passed|blocked> [relatório]
+devstate.py gate-status <dir> <gate> <pending|testing|tested|running|passed|blocked> [relatório]
 devstate.py worker <dir> <slot> '<assignment json>' | null
 devstate.py reset-steps <dir> <task> <from_step>
 devstate.py phase <dir> <requirements|planning|execution|done>
