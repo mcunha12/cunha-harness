@@ -5,14 +5,13 @@
   features/<feature-slug>/
     state.json        # fonte da verdade; só devstate.py escreve
     spec.md           # Fase 1
-    plan.json         # Fase 2; devgraph.py analyze preenche "analysis"
+    plan.json         # Fase 2, estrutura das tasks
+    plan.md           # Fase 2, uma seção por task
     decisions.jsonl   # uma decisão por linha
     costs.jsonl       # um registro por agente
-    tasks/<id>/scope.md, reading.md, plan.md, steps.json, result.json
+    tasks/<id>/steps.json, result.json
     final-tests/<repo>.md
-    reviews/<gate>.md
-    situation.json    # bloco "Situação agora", escrito pelo Haiku nos marcos
-    tracker.html      # gerado; nunca edite
+    reviews/<repo>.md
   repos/<repo>/run.json
   heavy/slot-N/       # trava de processo pesado
 ```
@@ -24,19 +23,22 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 ```json
 {
   "feature": "lembrete-aula",
-  "repos": ["api-bff", "web-app"],
+  "gate": "lean",
+  "review": {"scan_effort": "medium",
+             "overrides": {"migrations": {"effort": "xhigh", "motivo": "migration apaga coluna"}}},
   "tasks": [
-    {"id": "T1", "title": "Tabela de preferências", "description": "…", "done_when": "…",
-     "repo": "api-bff", "files_hint": ["db/migrations/001.sql"], "read_list": ["src/reminders/"],
-     "complexity": 3, "risk": 5, "depends_on": [], "changes_behavior": true, "has_ui": false}
-  ],
-  "gates": [{"id": "G1", "title": "gate final", "waits_for": ["T5"]}],
-  "analysis": {"costs": {}, "path_ahead": {}, "critical_path": [], "clusters": {}, "task_cluster": {}}
+    {"id": "T1", "title": "Tabela de preferências", "repo": "api-bff",
+     "files": ["db/migrations/001.sql"], "depends_on": [],
+     "complexity": 3, "risk": 5, "model": "haiku", "effort": "medium",
+     "has_ui": false, "changes_behavior": true}
+  ]
 }
 ```
 
-- Um gate só, o final. Nenhuma task depende dele.
-- Uma task toca um repo só.
+- Ordem da lista = ordem de execução. `depends_on` cita só tasks anteriores.
+- `gate`: `full` se alguma task tem risco 4 ou 5; senão `lean`.
+- `model` e `effort`: regras de `phase-2-planning.md`, "Notas do plano".
+- `review.overrides`: vira `--overrides tema:esforço` no gate.
 - `changes_behavior`: a task entra nos testes finais.
 
 ## state.json
@@ -44,30 +46,25 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 ```json
 {
   "feature": "lembrete-aula",
-  "title": "Lembrete de aula ao vivo por e-mail",
   "phase": "requirements | planning | execution | paused | done",
-  "repos": {"api-bff": {"path": "/abs/path", "feature_branch": "feat/lembrete-aula", "base": "main"}},
-  "tasks": {"T1": {"status": "pending | implemented | done | blocked", "steps_done": [1, 2],
-                   "step_running": null, "branch": "dev/lembrete-aula/T1", "worktree": null,
-                   "stack_on": null, "block_reason": null, "outputs": {"1": "tasks/T1/scope.md"}}},
-  "gates": {"G1": {"status": "pending | testing | tested | running | passed | blocked", "report": null}},
-  "workers": [{"slot": 1, "assignment": null, "started_at": null}],
-  "reviews": [{"id": "R1", "kind": "full", "tasks": ["T1"], "report": "reviews/G1.md", "tokens": null}],
-  "checkpoint": {"at": "2026-10-21T14:32:00", "note": "T3 passo 5 concluído"},
+  "repos": {"api-bff": {"path": "/abs/path", "feature_branch": "feat/lembrete-aula", "base": "main", "impeccable": false}},
+  "tasks": {"T1": {"status": "pending | running | implemented | done | blocked", "attempts": 1, "block_reason": null}},
+  "gates": {"final": {"status": "pending | testing | tested | running | passed | blocked", "report": null}},
+  "checkpoint": {"at": "2026-11-09T14:32:00", "note": "T3 done"},
   "paused": null,
+  "waits_for": null,
   "baseline_failures": ["src/test/a.test.ts > caso"]
 }
 ```
 
-- `implemented` = passos obrigatórios concluídos. `done` = a task entrou na branch da feature, por merge logo depois do `implemented`.
-- Passos obrigatórios: 1, 2, 3, 5; sem o 1 quando a complexidade é até 3. O passo 4 não existe desde 07/11/2026.
-- Gate: `pending` → `testing` (testes finais) → `tested` → `running` (master-review e QA) → `passed` ou `blocked`. `/dev stop` devolve `testing` a `pending` e `running` a `tested`.
-- `workers`: o slot nasce no primeiro uso. O total de slots livres vem do `capacity.py`.
+- `attempts` sobe a cada `task-status running`. A tentativa 2 roda em Sonnet.
+- `implemented` = a task commitou e ficou verde. `done` = a task entrou na branch da feature.
+- Gate: `pending` → `testing` → `tested` → `running` → `passed` ou `blocked`. `pause` devolve `testing` a `pending` e `running` a `tested`.
 
 ## Logs
 
-- `decisions.jsonl`: `{"id": "D1", "text": "…", "origin": "fonte | código | resposta | agendador | code-guard", "at": "…"}`.
-- `costs.jsonl`: `{"agent_role": "step-1", "model": "opus", "task": "T1", "tokens": 1234, "duration_ms": 5000}`. Use o uso de tokens que a notificação do agente traz; sem ele, `tokens: null` e só a duração.
+- `decisions.jsonl`: `{"id": "D1", "text": "…", "origin": "fonte | código | resposta | orquestrador | impeccable", "at": "…"}`.
+- `costs.jsonl`: `{"agent_role": "task", "model": "haiku", "task": "T1", "tokens": 1234, "duration_ms": 5000}`. Use o uso de tokens da notificação do agente; sem ele, `tokens: null`.
 
 ## run.json (por repo)
 
@@ -76,21 +73,17 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
  "backend": "api-bff da branch da feature ou URL de preprod"}
 ```
 
-Senha só por variável de ambiente. Nunca grave senha no arquivo.
+Senha só por variável de ambiente.
 
 ## Comandos do devstate.py
 
 ```
 devstate.py init <dir> <feature> <repos.json>
-devstate.py step-started <dir> <task> <step> <slot> [--force]   # exit 3 = passo já feito ou rodando
-devstate.py step-done <dir> <task> <step> [output]
-devstate.py task-status <dir> <task> <pending|implemented|done|blocked> [motivo]
+devstate.py task-status <dir> <task> <pending|running|implemented|done|blocked> [motivo]
 devstate.py gate-status <dir> <gate> <pending|testing|tested|running|passed|blocked> [relatório]
-devstate.py worker <dir> <slot> '<assignment json>' | null
-devstate.py reset-steps <dir> <task> <from_step>
 devstate.py phase <dir> <requirements|planning|execution|done>
 devstate.py pause <dir> <motivo> | resume <dir>
+devstate.py wait <dir> <dir da feature esperada> | ready <dir>
 devstate.py baseline <dir> '<json-list>'
 devstate.py decision <dir> '<json>' | cost <dir> '<json>'
-devstate.py hash <repo_path> <arquivo>... | stale <repo_path> <hashes.json>
 ```

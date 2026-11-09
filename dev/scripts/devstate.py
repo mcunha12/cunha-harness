@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Estado do /dev: escrita atômica, checkpoints, pausa e hash de leitura."""
+"""Estado do /dev: escrita atômica, checkpoints, pausa e fila."""
 import copy
 import datetime
-import hashlib
 import json
 import os
 import sys
 import tempfile
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def _now():
     return datetime.datetime.now().replace(microsecond=0).isoformat()
@@ -49,62 +46,18 @@ def load(feature_dir):
 
 
 def new_task_state():
-    return {"status": "pending", "steps_done": [], "step_running": None, "branch": None, "worktree": None,
-            "stack_on": None, "block_reason": None, "outputs": {}}
+    return {"status": "pending", "attempts": 0, "block_reason": None}
 
 
 def init(feature_dir, feature, repos):
     os.makedirs(feature_dir, exist_ok=True)
     return {"feature": feature, "phase": "requirements", "repos": repos, "tasks": {}, "gates": {},
-            "workers": [],
-            "reviews": [], "checkpoint": {"at": _now(), "note": "feature criada"}, "paused": None}
+            "checkpoint": {"at": _now(), "note": "feature criada"}, "paused": None}
 
 
 def _checkpoint(state, note):
     state["checkpoint"] = {"at": _now(), "note": note}
     return state
-
-
-class StepConflict(Exception):
-    pass
-
-
-# O número de workers sai do capacity.py a cada volta do loop, então o slot nasce quando é usado.
-def _slot(state, slot):
-    for w in state["workers"]:
-        if w["slot"] == slot:
-            return w
-    w = {"slot": slot, "assignment": None, "started_at": None}
-    state["workers"].append(w)
-    state["workers"].sort(key=lambda x: x["slot"])
-    return w
-
-
-def step_started(state, task, step, slot, force=False):
-    s = copy.deepcopy(state)
-    ts = s["tasks"].setdefault(task, new_task_state())
-    # Recusa disparar de novo um passo já feito ou rodando: o escopo da T5 rodou duas vezes (ranking-fellowship).
-    if not force and (step in ts["steps_done"] or ts["step_running"] == step):
-        raise StepConflict(f"{task} passo {step} já está {'feito' if step in ts['steps_done'] else 'rodando'}; use --force para refazer")
-    ts["step_running"] = step
-    w = _slot(s, slot)
-    w["assignment"] = w.get("assignment") or {"kind": "task", "task": task, "from_step": step}
-    w["started_at"] = _now()
-    return _checkpoint(s, f"{task} passo {step} iniciado")
-
-
-def step_done(state, task, step, output=None, required=(1, 2, 3, 5)):
-    s = copy.deepcopy(state)
-    ts = s["tasks"].setdefault(task, new_task_state())
-    if step not in ts["steps_done"]:
-        ts["steps_done"].append(step)
-        ts["steps_done"].sort()
-    ts["step_running"] = None
-    if output:
-        ts["outputs"][str(step)] = output
-    if ts["status"] == "pending" and all(n in ts["steps_done"] for n in required):
-        ts["status"] = "implemented"
-    return _checkpoint(s, f"{task} passo {step} concluído")
 
 
 def set_baseline(state, failures):
@@ -118,30 +71,15 @@ def set_task_status(state, task, status, reason=None):
     ts = s["tasks"].setdefault(task, new_task_state())
     ts["status"] = status
     ts["block_reason"] = reason
+    if status == "running":
+        ts["attempts"] = ts.get("attempts", 0) + 1
     return _checkpoint(s, f"{task} {status}" + (f": {reason}" if reason else ""))
-
-
-def reset_steps(state, task, from_step):
-    s = copy.deepcopy(state)
-    ts = s["tasks"].setdefault(task, new_task_state())
-    ts["steps_done"] = [n for n in ts["steps_done"] if n < from_step]
-    ts["outputs"] = {k: v for k, v in ts["outputs"].items() if int(k) < from_step}
-    ts["status"], ts["step_running"], ts["block_reason"] = "pending", None, None
-    return _checkpoint(s, f"{task} reaberta a partir do passo {from_step}")
 
 
 def set_gate_status(state, gate, status, report=None):
     s = copy.deepcopy(state)
     s["gates"][gate] = {"status": status, "report": report}
     return _checkpoint(s, f"{gate} {status}")
-
-
-def set_worker(state, slot, assignment):
-    s = copy.deepcopy(state)
-    w = _slot(s, slot)
-    w["assignment"] = assignment
-    w["started_at"] = _now() if assignment else None
-    return s
 
 
 def set_phase(state, phase):
@@ -156,9 +94,8 @@ REOPEN_ON_PAUSE = {"testing": "pending", "running": "tested"}
 def pause(state, reason):
     s = copy.deepcopy(state)
     for ts in s["tasks"].values():
-        ts["step_running"] = None
-    for w in s["workers"]:
-        w["assignment"], w["started_at"] = None, None
+        if ts["status"] == "running":
+            ts["status"] = "pending"
     # Testes finais e gate recomeçam na retomada; parados em "testing" ou "running", o agendador nunca os redispararia.
     for g in s["gates"].values():
         g["status"] = REOPEN_ON_PAUSE.get(g["status"], g["status"])
@@ -192,57 +129,19 @@ def is_ready(state):
         return False
 
 
-def hash_files(repo_path, files):
-    out = {}
-    for name in files:
-        path = os.path.join(repo_path, name)
-        if os.path.isfile(path):
-            with open(path, "rb") as f:
-                out[name] = hashlib.sha256(f.read()).hexdigest()
-    return out
-
-
-def stale_files(repo_path, hashes):
-    current = hash_files(repo_path, list(hashes))
-    return [name for name, digest in hashes.items() if current.get(name) != digest]
-
-
-def _required_for(feature_dir, task):
-    try:
-        with open(os.path.join(feature_dir, "plan.json")) as f:
-            plan = json.load(f)
-    except FileNotFoundError:
-        return (1, 2, 3, 5)
-    from devgraph import required_steps
-    for t in plan.get("tasks", []):
-        if t["id"] == task:
-            return required_steps(t)
-    return (1, 2, 3, 5)
-
-
 def _save(feature_dir, state):
     atomic_write_json(state_path(feature_dir), state)
-    try:
-        from render_tracker import render_dir
-        render_dir(feature_dir)
-    except Exception as exc:  # o render nunca derruba o checkpoint
-        print(f"render falhou: {exc}", file=sys.stderr)
 
 
 USAGE = """uso: devstate.py <op> <feature_dir> ...
   init <dir> <feature> <repos.json>
-  step-started <dir> <task> <step> <slot> [--force]
-  step-done <dir> <task> <step> [output]
   task-status <dir> <task> <status> [reason]
   gate-status <dir> <gate> <status> [report]
-  worker <dir> <slot> <assignment-json|null>
-  reset-steps <dir> <task> <from_step>
   phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
   wait <dir> <dep_feature_dir> | ready <dir>  (exit 0 = pode começar)
   baseline <dir> <json-list>  (testes que já falham na base)
-  decision <dir> <json> | cost <dir> <json>
-  hash <repo_path> <file>... | stale <repo_path> <hashes.json>"""
+  decision <dir> <json> | cost <dir> <json>"""
 
 
 def main(argv):
@@ -250,43 +149,22 @@ def main(argv):
         print(USAGE, file=sys.stderr)
         return 2
     op, target, args = argv[1], argv[2], argv[3:]
-    if op == "hash":
-        print(json.dumps(hash_files(target, args)))
-        return 0
-    if op == "stale":
-        with open(args[0]) as f:
-            print(json.dumps(stale_files(target, json.load(f))))
-        return 0
     if op == "init":
         with open(args[1]) as f:
             _save(target, init(target, args[0], json.load(f)))
         return 0
     if op in ("decision", "cost"):
         append_jsonl(os.path.join(target, "decisions.jsonl" if op == "decision" else "costs.jsonl"), json.loads(args[0]))
-        _save(target, load(target))
         return 0
     state = load(target)
     if op == "ready":
         return 0 if is_ready(state) else 1
-    if op == "step-started":
-        try:
-            state = step_started(state, args[0], int(args[1]), int(args[2]), force="--force" in args[3:])
-        except StepConflict as exc:
-            print(exc, file=sys.stderr)
-            return 3
-    elif op == "baseline":
+    if op == "baseline":
         state = set_baseline(state, json.loads(args[0]))
-    elif op == "step-done":
-        state = step_done(state, args[0], int(args[1]), args[2] if len(args) > 2 else None,
-                          required=_required_for(target, args[0]))
     elif op == "task-status":
         state = set_task_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
     elif op == "gate-status":
         state = set_gate_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
-    elif op == "worker":
-        state = set_worker(state, int(args[0]), json.loads(args[1]))
-    elif op == "reset-steps":
-        state = reset_steps(state, args[0], int(args[1]))
     elif op == "phase":
         state = set_phase(state, args[0])
     elif op == "pause":

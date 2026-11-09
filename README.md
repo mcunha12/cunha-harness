@@ -15,7 +15,8 @@ O `install.sh` nunca apaga. Pasta existente em `~/.claude/skills/` vai para `~/.
 
 | Skill | O que faz |
 |---|---|
-| `dev` | Pipeline de desenvolvimento: requisitos, grafo de tasks, workers pela capacidade da máquina, testes e gate único com QA no fim, pausa e retomada. |
+| `dev` | Pipeline de desenvolvimento: requisitos, um plano por feature, até 3 tasks em paralelo, testes e gate único com QA no fim (lean por padrão), Impeccable quando o repo tem setup, pausa e retomada. |
+| `retro` | Retro de uma feature do `/dev`, só quando chamada. |
 | `master-review` | Swarm de code review pós-código. Modos full e `--lean`, roast opcional. |
 | `code-guard` | A master-review como diretriz de escrita, usada durante a implementação. Aprende com erros repetidos. |
 | `review-*` | Especialistas da master-review, um tema cada. |
