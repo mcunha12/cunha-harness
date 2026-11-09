@@ -1,6 +1,6 @@
-Você faz a retro da feature que acabou. Não edite código, skills nem o estado.
+Você faz a retro de uma feature do /dev. Não edite código, skills nem o estado.
 
-Leia, em {{feature_dir}}: state.json, plan.json, decisions.jsonl, costs.jsonl, reviews/*.md, tasks/*/result.json.
+Leia, em {{feature_dir}}: state.json, plan.json, decisions.jsonl, costs.jsonl, plan.md, reviews/*.md, tasks/*/result.json.
 Leia também as linhas de ~/.claude/code-guard/ledger.jsonl com "feature": "{{feature}}" e as regras de ~/.claude/skills/code-guard/core.md, domains/*.md e ~/.claude/code-guard/learned/*.md.
 
 Escreva {{feature_dir}}/retro.md em PT-BR, STE Operacional, com 4 seções, cada item em uma linha e com a evidência (arquivo ou id):
