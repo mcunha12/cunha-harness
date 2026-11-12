@@ -21,7 +21,7 @@ class InstallTest(unittest.TestCase):
 
     def install(self, *args):
         env = dict(os.environ, SKILLS_DIR=self.skills, BACKUP_DIR=self.backup, REPO_DIR=self.repo)
-        return subprocess.run(["bash", INSTALL, *args], capture_output=True, text=True, env=env)
+        return subprocess.run(["bash", INSTALL, "--sem-deps", *args], capture_output=True, text=True, env=env)
 
     def test_install_creates_symlinks(self):
         self.assertEqual(self.install().returncode, 0)

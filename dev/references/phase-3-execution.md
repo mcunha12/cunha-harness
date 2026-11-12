@@ -38,7 +38,7 @@ Rodam quando todas as tasks estão `done`.
 1. `devstate.py gate-status <dir> final running`.
 2. Em cada repo, na branch da feature: `master-review --lean --base <base> --spec <dir>/spec.md --overrides <review.overrides do plano>`. Com alguma task de risco 4 ou 5, a review é full (sem `--lean`). Passe `--scan-effort <review.scan_effort>`. Os modelos são os da tabela da master-review. Feature com vários repos: uma review por repo, com os outros em `related_repos`.
 3. Antes dos especialistas rodam `fixture_pii.py` e, em repo com setup do Impeccable, o `impeccable detect` (`references/impeccable.md`). O que eles acham não é reportado de novo.
-4. QA: passo 8b da master-review, com os `tasks/*/steps.json`, regras do "Fast QA" do `~/.claude/CLAUDE.md`, dentro de `heavy_lock.sh --kind qa`.
+4. QA: passo 8b da master-review, com os `tasks/*/steps.json`, regras do "Fast QA" de `references/regras-globais.md` com a prioridade de tela da spec no lugar da ordem fixa (fluxo inteiro no tamanho prioritário, screenshot das telas alteradas nos outros dois), dentro de `heavy_lock.sh --kind qa`.
 5. O test-audit da master-review roda sem o item 1 do Mode B (ordem dos commits): no /dev, os testes entram depois do código.
 6. Uma rodada de correção: lote com BLOCKER ou MAJOR em Sonnet `high`, conferido por Opus `high` (passo 11 da master-review). Sem BLOCKER e sem MAJOR depois dela: `gate-status passed`. O que sobrar: `gate-status blocked` e a lista vai ao Marcelo.
 7. Grave o relatório em `reviews/<repo>.md`.

@@ -23,7 +23,7 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 
 ## 2. Regras invioláveis
 
-1. Tudo do `~/.claude/CLAUDE.md` vale aqui e em todo subagent: STE Operacional, comentário one-liner, testes só dos arquivos alterados com workers limitados, releitura antes de escrever em arquivo que outra pessoa pode ter tocado. Todo prompt de UI carrega as regras de UI do `~/.claude/CLAUDE.md`.
+1. As regras de `references/regras-globais.md` valem aqui e em todo subagent: escrita, código e git, testes, UI e QA, custo. Todo prompt de subagent cita o arquivo; todo prompt de UI carrega a seção "UI e QA". O `~/.claude/CLAUDE.md` de quem roda a /dev vale por cima.
 2. Nada em `main` ou `master`: commit, push e merge só em branch de feature ou de task.
 3. Só a sessão principal dispara agentes. Subagent não dispara subagent.
 4. Todo agente grava a saída no arquivo indicado e devolve só o caminho e até 5 linhas de resumo.
@@ -35,13 +35,18 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 10. Uma feature por vez. Até 3 tasks em paralelo dentro dela. Agente que só lê ou escreve fora do repo não conta no teto.
 11. Uma review só: o gate final, depois das tasks e dos testes finais.
 12. Testes só no fim da feature, com veredito "Behavior" na tabela da /test-audit. No /dev, esta regra substitui o Mode A da /test-audit e o item da code-guard que pede testes antes do código.
-13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`.
+13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`. Exceção: toda proposta de UI do brainstorm passa pelo Impeccable, com ou sem setup.
+14. Brainstorm: todo `/dev <pedido>` passa pelo `references/brainstorm.md` na Fase 1 (cópia adaptada da `superpowers:brainstorming`; não carregue a skill da superpowers) para fechar regras de negócio, pontas soltas e propostas de UI. Nenhuma feature entra na Fase 2 sem a `spec.md` aprovada pelo Marcelo.
 
 ## 3. Fluxo
 
-1. Fase 1, requisitos: `references/phase-1-requirements.md`.
+1. Fase 1, requisitos e brainstorm: `references/phase-1-requirements.md`.
 2. Fase 2, plano: `references/phase-2-planning.md`.
 3. Fase 3, execução, testes finais e gate: `references/phase-3-execution.md`.
+4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). As tasks leem esse arquivo e não carregam a skill.
+5. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
+
+Custo de contexto e modelo mais barato: `references/regras-globais.md`, seção 5.
 
 Fila entre features, inclusive de outra sessão:
 
@@ -49,17 +54,20 @@ Fila entre features, inclusive de outra sessão:
 2. Dispare em background: `until python3 ~/.claude/skills/dev/scripts/devstate.py ready <dir>; do sleep 300; done`.
 3. Quando o loop sair, comece a Fase 2 da feature na hora, sem perguntar.
 
-## 4. Modelos e esforço (fixos, 09/11/2026)
+## 4. Modelos e esforço (fixos, 12/11/2026)
 
-Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
+Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md`, `references/regras-globais.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
 
 | Trabalho | Padrão | Quando o plano decide outro |
 |---|---|---|
 | Orquestrador | a sessão, `model: opus` e `effort: medium` no frontmatter | não muda |
 | Mapeamento do código (Fase 1) | `haiku`, `medium` | o orquestrador usa `low` em pedido de 1 módulo |
+| Brainstorm (Fase 1) | o orquestrador, na conversa | não muda |
+| Builder check da spec (Fase 1) | `opus`, `medium` | não muda |
 | Plano da feature (Fase 2), `prompts/plan-feature.md` | `opus`, `high` | não muda |
 | Task de lógica, `prompts/task.md` | `haiku`, `medium` | `sonnet`, `medium` |
-| Task de UI, `prompts/task.md` | `sonnet`, `medium` | `sonnet`, `high` ou `opus`, `medium` |
+| Task de UI, `prompts/task.md` | `sonnet`, `medium` | `opus`, `low` |
+| Resumo da code-guard (Fase 3, antes da 1ª task) | `haiku`, `low` | não muda |
 | Testes finais, 1 por repo, `prompts/final-tests.md` | `haiku`, `medium` | `sonnet`, `medium` |
 | Gate final | Skill `master-review` com a tabela de modelos dela: `--lean` por padrão, full quando alguma task tem risco 4 ou 5, `--overrides` do plano | o plano grava os overrides por tema |
 

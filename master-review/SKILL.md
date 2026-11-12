@@ -10,19 +10,23 @@ effort: medium
 
 O orquestrador roda em Opus `medium`. Ele lê o diff, decide quais especialistas rodar, dispara o scan em paralelo, consolida, verifica e corrige. O fluxo padrão termina com o código corrigido no working tree e um relatório. Nada vai para commit.
 
-## Modelos (fixos, 09/11/2026)
+## Modelos (fixos, 12/11/2026)
+
+Haiku lê, Opus julga. O Opus nunca abre arquivo nem lê o diff inteiro: recebe só o pacote de evidência.
 
 Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
 
 | Papel | Agent tool |
 |---|---|
-| Orquestrador e verificação de BLOCKER/MAJOR (passo 8) | a sessão, `model: opus` e `effort: medium` no frontmatter |
+| Orquestrador e juiz de BLOCKER/MAJOR (passo 8) | a sessão, `model: opus` e `effort: medium` no frontmatter |
+| Coleta de evidência para o juiz (passo 8) | `model: "haiku"`, `effort: "medium"` |
 | Scan de cada especialista | `model: "haiku"`, `effort` de `--scan-effort`. Sem a flag: `low` em diff pequeno sem tema crítico, senão `medium` |
-| Scan de `review-roast`, `review-ux` e Spec | `model: "sonnet"`, `effort: "medium"` |
+| Scan de `review-roast` e Spec | `model: "haiku"`, `effort: "medium"` |
+| Scan de `review-ux` (UI) | `model: "sonnet"`, `effort: "medium"` |
 | Tema com override (scan e verificação daquele tema) | `model: "opus"`, `effort: "high"` ou `"xhigh"`, conforme o override |
-| Correção de lote com BLOCKER ou MAJOR | `model: "sonnet"`, `effort: "high"` |
+| Correção de lote com BLOCKER ou MAJOR | `model: "sonnet"`, `effort: "medium"` |
 | Correção de lote só com MINOR ou NIT | `model: "haiku"`, `effort: "medium"` |
-| Conferência das correções de BLOCKER e MAJOR | 1 agente `model: "opus"`, `effort: "high"` |
+| Conferência das correções de BLOCKER e MAJOR | 1 agente `model: "opus"`, `effort: "medium"`, só com o pacote de evidência |
 
 Override de tema: `--overrides seguranca:xhigh,migrations:high`. O /dev passa o override que o plano gravou. Sem a flag, o orquestrador aplica a mesma régua: diff que toca autenticação ou autorização, dinheiro, dado de usuário, migration ou dado irreversível, ou contrato entre serviços sobe o especialista daquele tema para Opus `high`. `xhigh` só vem pela flag. Registre cada override e o motivo no relatório.
 
@@ -121,7 +125,7 @@ Devolva SOMENTE o bloco ```json do output contract (sem o markdown).
 
 Com `--lean`, acrescente ao prompt: "Modo lean: devolva só achados BLOCKER e MAJOR."
 
-roast: `model: "sonnet"`, `effort: "medium"`. O context packet vai sem `conventions` e sem overlay: o roast lê o diff como revisor externo. Acrescente a spec da feature quando houver.
+roast: `model: "haiku"`, `effort: "medium"`. O context packet vai sem `conventions` e sem overlay: o roast lê o diff como revisor externo. Acrescente a spec da feature quando houver.
 
 Diff com mais de ~1.500 linhas: fatie por grupos de arquivos coesos (mesmo diretório/feature) e dispare um subagent por fatia do mesmo especialista. O teto é 20 subagents simultâneos. Acima disso, rode em ondas.
 
@@ -131,7 +135,7 @@ test-audit: dispare um subagent `model: "haiku"`, `effort: "medium"` que carrega
 
 ### 4b. Eixo Spec (com `--spec`)
 
-Dispare um agente `model: "sonnet"`, `effort: "medium"`, com o prompt de `references/spec-review.md`, a spec e o diff. Ele lista requisito faltando, escopo a mais e implementação errada, cada um citando a linha da spec. Prefixo `SPEC`. O relatório tem uma seção própria "Spec": esses achados não entram na dedup com os especialistas. BLOCKER e MAJOR do Spec passam pela verificação do passo 8.
+Dispare um agente `model: "haiku"`, `effort: "medium"`, com o prompt de `references/spec-review.md`, a spec e o diff. Ele lista requisito faltando, escopo a mais e implementação errada, cada um citando a linha da spec. Prefixo `SPEC`. O relatório tem uma seção própria "Spec": esses achados não entram na dedup com os especialistas. BLOCKER e MAJOR do Spec passam pela verificação do passo 8.
 
 ### 5. Coleta e validação
 
@@ -149,7 +153,7 @@ Quando dois agentes pedem coisas opostas no mesmo trecho (dry quer extrair, legi
 
 ### 8. Verificação (obrigatória)
 
-Para cada BLOCKER e MAJOR, o orquestrador (Opus `medium`) abre o arquivo, lê o contexto (caller, callee, config) e confirma. Resultado por achado: `confirmado`, `rebaixado para <nível>` ou `descartado`, sempre com o motivo em uma linha. Achado de tema com override: dispare 1 agente Opus com o esforço do override para verificar os achados daquele tema, com a mesma escada de prova.
+Para cada BLOCKER e MAJOR, um agente Haiku `medium` abre o arquivo e monta o pacote de evidência: `arquivo:linha`, o trecho, caller, callee e config relevantes, e o caso que tornaria o achado falso. O orquestrador (Opus `medium`) julga só pelo pacote, sem abrir arquivo, e confirma. Pacote insuficiente: pede ao mesmo Haiku (SendMessage) o trecho que falta. Resultado por achado: `confirmado`, `rebaixado para <nível>` ou `descartado`, sempre com o motivo em uma linha. Achado de tema com override: dispare 1 agente Opus com o esforço do override para verificar os achados daquele tema, com a mesma escada de prova.
 
 Registre o nível de prova (`proof_level`, escada em `references/severity-rubric.md`):
 
@@ -175,7 +179,7 @@ python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out 
 
 `steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (iPhone SE 375×667, DPR 2, toque; tablet 768×1024, DPR 2, toque e UA de iPad; desktop 1280×720, DPR 1).
 
-QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/CLAUDE.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
+QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/skills/dev/references/regras-globais.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
 - Sirva um build de produção (`next build` + `next start`), nunca `next dev`. Um build por lote de correções.
 - O fluxo de cada tela é um script (`steps.json` do `mobile_flow.py` ou Playwright) que imprime métricas e ok/falha por passo. O agente de QA roda o script; não explora clicando.
 - Limite de 30 s por passo; em falha, print e segue.
@@ -231,7 +235,7 @@ Salve o catálogo em `<scratchpad>/master-review/<run>/tasks.json` e mostre a ta
 
 ### 11. Correção em paralelo
 
-Numa única mensagem, uma chamada Agent por lote, com `subagent_type: "general-purpose"`. Lote com algum BLOCKER ou MAJOR: `model: "sonnet"`, `effort: "high"`. Lote só com MINOR ou NIT: `model: "haiku"`, `effort: "medium"`. Prompt de cada uma:
+Numa única mensagem, uma chamada Agent por lote, com `subagent_type: "general-purpose"`. Lote com algum BLOCKER ou MAJOR: `model: "sonnet"`, `effort: "medium"`. Lote só com MINOR ou NIT: `model: "haiku"`, `effort: "medium"`. Prompt de cada uma:
 
 ```
 Você é fixer do master-review. Aplique SOMENTE as tasks abaixo, nos arquivos listados. Não toque em outro arquivo, salvo teste novo exigido pela task.
@@ -250,7 +254,7 @@ Depois que todos voltarem:
 1. Rode `git diff --stat` e confira que só os arquivos dos lotes mudaram. Arquivo inesperado: mostre ao usuário e não reverta sem perguntar (pode ser outra sessão).
 2. Rode o type-check do repo uma vez (`tsc --noEmit -p <tsconfig>` ou equivalente) e o lint nos arquivos alterados.
 3. Falha atribuível a um lote: reverta aquele lote e marque as tasks como manuais.
-4. Conferência: dispare 1 agente `model: "opus"`, `effort: "high"` com os achados BLOCKER e MAJOR e só o diff das correções deles (`git diff` dos arquivos dos lotes). Ele devolve, por task, `ok` ou `reaberta` com o motivo. Task reaberta volta ao mesmo fixer uma vez (SendMessage), com o motivo. Reaberta de novo: vira manual.
+4. Conferência: dispare 1 agente `model: "opus"`, `effort: "medium"` com os achados BLOCKER e MAJOR e só o diff das correções deles (`git diff` dos arquivos dos lotes). Ele devolve, por task, `ok` ou `reaberta` com o motivo. Task reaberta volta ao mesmo fixer uma vez (SendMessage), com o motivo. Reaberta de novo: vira manual.
 5. Preencha a seção "Correção" do relatório: tabela task → status → verificação, e a lista de tasks manuais.
 
 ### 12. `--post`
