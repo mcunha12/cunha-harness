@@ -36,7 +36,7 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 11. Uma review só: o gate final, depois das tasks e dos testes finais.
 12. Testes só no fim da feature, com veredito "Behavior" na tabela da /test-audit. No /dev, esta regra substitui o Mode A da /test-audit e o item da code-guard que pede testes antes do código.
 13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`. Exceção: toda proposta de UI do brainstorm passa pelo Impeccable, com ou sem setup.
-14. Brainstorm: todo `/dev <pedido>` passa pela `superpowers:brainstorming` na Fase 1 para fechar regras de negócio, pontas soltas e propostas de UI. Nenhuma feature entra na Fase 2 sem a `spec.md` aprovada pelo Marcelo.
+14. Brainstorm: todo `/dev <pedido>` passa pelo `references/brainstorm.md` na Fase 1 (cópia adaptada da `superpowers:brainstorming`; não carregue a skill da superpowers) para fechar regras de negócio, pontas soltas e propostas de UI. Nenhuma feature entra na Fase 2 sem a `spec.md` aprovada pelo Marcelo.
 
 ## 3. Fluxo
 
@@ -53,7 +53,8 @@ Custo de contexto (do `~/.claude/CLAUDE.md`, 12/11/2026):
 3. Monitor só com filtro (`grep --line-buffered 'ERROR\|FAIL\|PASS\|Done'`). Nunca `tail -f` de log inteiro.
 4. Autocompact dispara em 256k. Mantenha o orquestrador enxuto: resumo de agente, nunca dump de arquivo.
 5. Opus julga, Haiku lê: o agente Opus recebe só o pacote de evidência (trechos com `file:line`), coletado por um agente Haiku.
-6. Modelo e esforço: o mais barato que não compromete a qualidade, medido por custo por task terminada.
+6. Nunca use `timeout` no macOS: o comando não existe e a saída vazia parece sucesso.
+7. Modelo e esforço: o mais barato que não compromete a qualidade, medido por custo por task terminada.
 
 Fila entre features, inclusive de outra sessão:
 
