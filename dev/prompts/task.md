@@ -8,7 +8,7 @@ Onde trabalhar: {{workdir}} (branch {{branch}}). Trabalhe só nele.
 
 Faça:
 1. Leia a seção da task no plano e os arquivos que ela cita.
-2. Carregue a skill `code-guard` com os domínios do plano.
+2. Leia `{{feature_dir}}/guard.md` e aplique as regras. Não carregue a skill `code-guard`.
 3. Task com UI em repo com Impeccable: siga `~/.claude/skills/dev/references/impeccable.md`, linha "Task com UI".
 4. Siga o `CLAUDE.md` do repo e o `~/.claude/CLAUDE.md`: comentário one-liner, nada de refatoração fora do escopo.
 5. Implemente o plano. Não escreva teste novo: os testes entram no fim da feature.

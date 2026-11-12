@@ -35,13 +35,25 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 10. Uma feature por vez. Até 3 tasks em paralelo dentro dela. Agente que só lê ou escreve fora do repo não conta no teto.
 11. Uma review só: o gate final, depois das tasks e dos testes finais.
 12. Testes só no fim da feature, com veredito "Behavior" na tabela da /test-audit. No /dev, esta regra substitui o Mode A da /test-audit e o item da code-guard que pede testes antes do código.
-13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`.
+13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`. Exceção: toda proposta de UI do brainstorm passa pelo Impeccable, com ou sem setup.
+14. Brainstorm: todo `/dev <pedido>` passa pela `superpowers:brainstorming` na Fase 1 para fechar regras de negócio, pontas soltas e propostas de UI. Nenhuma feature entra na Fase 2 sem a `spec.md` aprovada pelo Marcelo.
 
 ## 3. Fluxo
 
-1. Fase 1, requisitos: `references/phase-1-requirements.md`.
+1. Fase 1, requisitos e brainstorm: `references/phase-1-requirements.md`.
 2. Fase 2, plano: `references/phase-2-planning.md`.
 3. Fase 3, execução, testes finais e gate: `references/phase-3-execution.md`.
+4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). As tasks leem esse arquivo e não carregam a skill.
+5. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
+
+Custo de contexto (do `~/.claude/CLAUDE.md`, 12/11/2026):
+
+1. Todo evento de Monitor ou poll relê o contexto inteiro. Com 500k de contexto, 1 evento custa cerca de US$ 0,75.
+2. Comando longo (build, testes, QA, loop de `ready`) roda com `run_in_background` e avisa na saída. Não faça poll.
+3. Monitor só com filtro (`grep --line-buffered 'ERROR\|FAIL\|PASS\|Done'`). Nunca `tail -f` de log inteiro.
+4. Autocompact dispara em 256k. Mantenha o orquestrador enxuto: resumo de agente, nunca dump de arquivo.
+5. Opus julga, Haiku lê: o agente Opus recebe só o pacote de evidência (trechos com `file:line`), coletado por um agente Haiku.
+6. Modelo e esforço: o mais barato que não compromete a qualidade, medido por custo por task terminada.
 
 Fila entre features, inclusive de outra sessão:
 
@@ -49,7 +61,7 @@ Fila entre features, inclusive de outra sessão:
 2. Dispare em background: `until python3 ~/.claude/skills/dev/scripts/devstate.py ready <dir>; do sleep 300; done`.
 3. Quando o loop sair, comece a Fase 2 da feature na hora, sem perguntar.
 
-## 4. Modelos e esforço (fixos, 09/11/2026)
+## 4. Modelos e esforço (fixos, 12/11/2026)
 
 Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
 
@@ -57,9 +69,12 @@ Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md` e a memória
 |---|---|---|
 | Orquestrador | a sessão, `model: opus` e `effort: medium` no frontmatter | não muda |
 | Mapeamento do código (Fase 1) | `haiku`, `medium` | o orquestrador usa `low` em pedido de 1 módulo |
+| Brainstorm (Fase 1) | o orquestrador, na conversa | não muda |
+| Builder check da spec (Fase 1) | `opus`, `medium` | não muda |
 | Plano da feature (Fase 2), `prompts/plan-feature.md` | `opus`, `high` | não muda |
 | Task de lógica, `prompts/task.md` | `haiku`, `medium` | `sonnet`, `medium` |
-| Task de UI, `prompts/task.md` | `sonnet`, `medium` | `sonnet`, `high` ou `opus`, `medium` |
+| Task de UI, `prompts/task.md` | `sonnet`, `medium` | `opus`, `low` |
+| Resumo da code-guard (Fase 3, antes da 1ª task) | `haiku`, `low` | não muda |
 | Testes finais, 1 por repo, `prompts/final-tests.md` | `haiku`, `medium` | `sonnet`, `medium` |
 | Gate final | Skill `master-review` com a tabela de modelos dela: `--lean` por padrão, full quando alguma task tem risco 4 ou 5, `--overrides` do plano | o plano grava os overrides por tema |
 
