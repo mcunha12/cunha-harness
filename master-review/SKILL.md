@@ -213,17 +213,21 @@ Com `--lean`, o relatório tem só: veredito, achados BLOCKER/MAJOR por arquivo 
 
 ### 9b. Ledger (todo modo, inclusive `--report-only` e `--lean`)
 
-Grave os BLOCKER e MAJOR confirmados (ou rebaixados para MAJOR) no ledger da code-guard. Salve os achados verificados, com o campo `verification`, em `<run>/verified.json`:
+Grave os BLOCKER e MAJOR confirmados (ou rebaixados para MAJOR) no ledger da code-guard. Salve em `<run>/verified.json` o objeto inteiro de cada achado, como o especialista devolveu (`agent`, `category`, `location`, `evidence`, `problem`), mais `verification` e `proof_level`. Resumo sem `evidence` e `problem` deixa o ledger sem texto; o `append` avisa em `missing_text`.
 
 ```bash
 python3 ~/.claude/skills/code-guard/scripts/ledger.py append --findings <run>/verified.json --repo <repo> \
-  --feature <feature ou avulsa> --task <task ou avulsa> --loaded-domains <domínios da code-guard carregados, se houver>
+  --feature <feature ou avulsa> --task <task ou avulsa> --feature-dir <feature_dir do /dev, quando houver> --loaded-domains <domínios da code-guard, só fora do /dev>
 python3 ~/.claude/skills/code-guard/scripts/ledger.py triggers
 ```
 
 Trigger na saída: carregue a skill `code-guard` e siga a seção "Ciclo de aprendizado".
 
 Com `--report-only`, pare aqui.
+
+### 9c. Custo (chamado pelo /dev, com `--feature-dir`)
+
+Cada agente do gate grava uma linha própria quando a notificação chega: scan de cada especialista, verificação, QA, `review-ux`, correção e conferência. Use `devstate.py cost <feature_dir> '{"agent_role": "<agente>", "model": "<modelo>", "task": "gate", "tokens": <total_tokens do agente>, "duration_ms": <duration_ms do agente>}'`. Nunca grave uma linha somada do gate: o `devstate.py cost` recusa duração 0 e linha repetida.
 
 ### 10. Catálogo de tasks
 

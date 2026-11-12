@@ -87,6 +87,13 @@ class DevstateTest(unittest.TestCase):
         self.assertEqual(s["baseline_failures"], ["src/test/a.test.ts > caso x", "src/test/b.test.ts"])
         self.assertIn("baseline", s["checkpoint"]["note"])
 
+    def test_cost_refuses_aggregate_gate_line_and_duplicates(self):
+        ok = {"agent_role": "scan", "model": "haiku", "task": "gate", "tokens": 10, "duration_ms": 5}
+        self.assertIsNone(devstate.cost_error(self.tmp, ok))
+        self.assertIn("duration_ms", devstate.cost_error(self.tmp, dict(ok, duration_ms=0)))
+        devstate.append_jsonl(os.path.join(self.tmp, "costs.jsonl"), ok)
+        self.assertIn("idêntica", devstate.cost_error(self.tmp, ok))
+
 
 if __name__ == "__main__":
     unittest.main()

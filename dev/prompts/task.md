@@ -12,6 +12,8 @@ Faça:
 3. Task com UI em repo com Impeccable: siga `~/.claude/skills/dev/references/impeccable.md`, linha "Task com UI". Task com UI em qualquer repo: siga `~/.claude/skills/dev/references/unslop.md` e a prioridade de tela da spec.
 4. Siga o `CLAUDE.md` do repo e `~/.claude/skills/dev/references/regras-globais.md`: comentário one-liner, nada de refatoração fora do escopo.
 5. Implemente o plano. Não escreva teste novo: os testes entram no fim da feature.
+   - Para achar quem usa um símbolo que você muda (assinatura, nome, tipo), carregue a ferramenta com `ToolSearch` `select:LSP` e use `findReferences` e `incomingCalls`. A primeira chamada pode voltar incompleta com o índice frio: repita uma vez. Complete com grep só para string literal e import dinâmico, que o LSP não vê.
+   - O erro de tipo que aparece sozinho depois de um Edit em arquivo de `supabase/functions/` (Deno, `https://`, `npm:`) é falso. Ignore. Ali vale o `deno check`.
 6. Teste existente que quebra porque a spec muda aquele comportamento: ajuste só a asserção e liste o teste em `tests_adjusted`. Teste que quebra por outro motivo é defeito do código: corrija o código.
 7. Rode `python3 ~/.claude/skills/code-guard/scripts/diff_checks.py run --repo {{workdir}} --base {{base_branch}} --uncommitted` e zere os achados.
 8. Rode os comandos de verificação do plano, cada um via `~/.claude/skills/dev/scripts/heavy_lock.sh`, com `--maxWorkers=2`. Nunca a suíte inteira. Falha listada em `baseline_failures` do state.json já existia: não investigue.
