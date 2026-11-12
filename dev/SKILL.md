@@ -23,7 +23,7 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 
 ## 2. Regras invioláveis
 
-1. Tudo do `~/.claude/CLAUDE.md` vale aqui e em todo subagent: STE Operacional, comentário one-liner, testes só dos arquivos alterados com workers limitados, releitura antes de escrever em arquivo que outra pessoa pode ter tocado. Todo prompt de UI carrega as regras de UI do `~/.claude/CLAUDE.md`.
+1. As regras de `references/regras-globais.md` valem aqui e em todo subagent: escrita, código e git, testes, UI e QA, custo. Todo prompt de subagent cita o arquivo; todo prompt de UI carrega a seção "UI e QA". O `~/.claude/CLAUDE.md` de quem roda a /dev vale por cima.
 2. Nada em `main` ou `master`: commit, push e merge só em branch de feature ou de task.
 3. Só a sessão principal dispara agentes. Subagent não dispara subagent.
 4. Todo agente grava a saída no arquivo indicado e devolve só o caminho e até 5 linhas de resumo.
@@ -46,15 +46,7 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). As tasks leem esse arquivo e não carregam a skill.
 5. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
 
-Custo de contexto (do `~/.claude/CLAUDE.md`, 12/11/2026):
-
-1. Todo evento de Monitor ou poll relê o contexto inteiro. Com 500k de contexto, 1 evento custa cerca de US$ 0,75.
-2. Comando longo (build, testes, QA, loop de `ready`) roda com `run_in_background` e avisa na saída. Não faça poll.
-3. Monitor só com filtro (`grep --line-buffered 'ERROR\|FAIL\|PASS\|Done'`). Nunca `tail -f` de log inteiro.
-4. Autocompact dispara em 256k. Mantenha o orquestrador enxuto: resumo de agente, nunca dump de arquivo.
-5. Opus julga, Haiku lê: o agente Opus recebe só o pacote de evidência (trechos com `file:line`), coletado por um agente Haiku.
-6. Nunca use `timeout` no macOS: o comando não existe e a saída vazia parece sucesso.
-7. Modelo e esforço: o mais barato que não compromete a qualidade, medido por custo por task terminada.
+Custo de contexto e modelo mais barato: `references/regras-globais.md`, seção 5.
 
 Fila entre features, inclusive de outra sessão:
 
@@ -64,7 +56,7 @@ Fila entre features, inclusive de outra sessão:
 
 ## 4. Modelos e esforço (fixos, 12/11/2026)
 
-Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
+Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md`, `references/regras-globais.md` e a memória. Toda chamada Agent passa `model` e `effort` explícitos.
 
 | Trabalho | Padrão | Quando o plano decide outro |
 |---|---|---|

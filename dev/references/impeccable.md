@@ -16,4 +16,4 @@ Regras:
 - Diretiva `CONTEXT_STALE` do `context`: vai para `decisions.jsonl` e para o resumo final. O /dev não conserta drift.
 - O /dev não roda `critique` nem `audit` do Impeccable: o gate já cobre UX, a11y e front com os especialistas da master-review.
 - Sem setup: só a linha "Brainstorm" da tabela roda. A task de UI segue `references/unslop.md` mesmo sem setup.
-- Prioridade de tela: a spec define qual tamanho vem primeiro (mobile, tablet ou desktop). Mockup, task de UI e QA seguem essa ordem no lugar da ordem fixa do `~/.claude/CLAUDE.md`.
+- Prioridade de tela: a spec define qual tamanho vem primeiro (mobile, tablet ou desktop). Mockup, task de UI e QA seguem essa ordem conforme `references/regras-globais.md`, seção 4.

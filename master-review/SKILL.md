@@ -179,7 +179,7 @@ python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out 
 
 `steps.json` descreve o fluxo: `{"click": css}`, `{"type": [css, texto]}`, `{"wait": css | ms}`, `{"text": css}`, `{"shot": nome}` (`"full": true` para página inteira). Nunca use `--window-size=375` do Chrome: o headless não abre janela abaixo de 500 px e o print sai como layout de 500 px cortado. O `mobile_flow.py` emula o aparelho pelo protocolo do Chrome (iPhone SE 375×667, DPR 2, toque; tablet 768×1024, DPR 2, toque e UA de iPad; desktop 1280×720, DPR 1).
 
-QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/CLAUDE.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
+QA rápido (03/11/2026, Marcelo; regra completa em `~/.claude/skills/dev/references/regras-globais.md`, "Fast QA"). QA exploratório por agente levou de 12 a 40 min por caso:
 - Sirva um build de produção (`next build` + `next start`), nunca `next dev`. Um build por lote de correções.
 - O fluxo de cada tela é um script (`steps.json` do `mobile_flow.py` ou Playwright) que imprime métricas e ok/falha por passo. O agente de QA roda o script; não explora clicando.
 - Limite de 30 s por passo; em falha, print e segue.
