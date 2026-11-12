@@ -50,7 +50,7 @@ Vale para todo código. Cada regra evita um BLOCKER ou MAJOR do especialista de 
 
 ## Tipagem
 
-- [TIP] Fronteira de I/O valida em runtime (zod, class-validator) e deriva o tipo do schema. Nunca `res.json() as T` ou `JSON.parse() as T`. — origem: review-tipagem/fronteira-de-io
+- [TIP] Fronteira de I/O valida em runtime (zod, class-validator) e deriva o tipo do schema. Vale para resposta de terceiro. Nunca `res.json() as T` ou `JSON.parse() as T`. — origem: review-tipagem/fronteira-de-io
 - [TIP] Sem `any`, `as` mentiroso, `@ts-ignore` ou `@ts-nocheck` em regra de negócio. — origem: review-tipagem/escape
 - [TIP] Estado com combinações ilegais vira união discriminada com checagem exaustiva. — origem: review-tipagem/TIP-MOD
 - [TIP] Type predicate checa de fato o que afirma. — origem: review-tipagem/predicate
@@ -59,8 +59,7 @@ Vale para todo código. Cada regra evita um BLOCKER ou MAJOR do especialista de 
 
 ## Arquitetura e lições gerais
 
-- [ARQ] Antes de criar um padrão, procure como o repo já resolve o mesmo problema e siga. — origem: review-arquitetura/conformidade
-- [ARQ] Reutilize componente, hook, util ou serviço que já existe antes de criar outro. — origem: review-arquitetura/conformidade
+- [ARQ] Antes de criar padrão, componente, hook, util ou serviço, procure como o repo já resolve o mesmo problema e reutilize. — origem: review-arquitetura/conformidade
 - [LEG] Arquivo de componente acima de ~200 linhas se divide; util com responsabilidades distintas se divide por domínio. — origem: review-legibilidade/arquivo-extenso
-- [CTR] Renomear campo de DTO é breaking change de contrato: faça grep dos consumidores e mude produtor e consumidor juntos. — origem: review-contratos/CTR-BRK
+- [CTR] Remover, renomear ou mudar o tipo de campo consumido por outro repo é breaking change: ache os consumidores e mude produtor e consumidor juntos, ou use alias com janela de transição. — origem: review-contratos/CTR-BRK
 - [MOD] Mudança local não altera comportamento global (estilo global, config compartilhada, util usado em todo o app) sem pedido explícito. — origem: review-modularidade/escopo

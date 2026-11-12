@@ -133,6 +133,21 @@ def _save(feature_dir, state):
     atomic_write_json(state_path(feature_dir), state)
 
 
+def cost_error(feature_dir, record):
+    missing = [k for k in ("agent_role", "model", "task", "tokens", "duration_ms") if k not in record]
+    if missing:
+        return f"faltam campos {missing}"
+    if record["tokens"] > 0 and record["duration_ms"] <= 0:
+        return "duration_ms 0 com tokens: grave a duração do agente, não um total somado"
+    path = os.path.join(feature_dir, "costs.jsonl")
+    if os.path.exists(path):
+        with open(path) as f:
+            last = [x for x in f.read().splitlines() if x.strip()][-1:]
+        if last and json.loads(last[0]) == record:
+            return "linha idêntica à anterior"
+    return None
+
+
 USAGE = """uso: devstate.py <op> <feature_dir> ...
   init <dir> <feature> <repos.json>
   task-status <dir> <task> <status> [reason]
@@ -153,6 +168,11 @@ def main(argv):
         with open(args[1]) as f:
             _save(target, init(target, args[0], json.load(f)))
         return 0
+    if op == "cost":
+        error = cost_error(target, json.loads(args[0]))
+        if error:
+            print(f"custo recusado: {error}", file=sys.stderr)
+            return 2
     if op in ("decision", "cost"):
         append_jsonl(os.path.join(target, "decisions.jsonl" if op == "decision" else "costs.jsonl"), json.loads(args[0]))
         return 0

@@ -43,7 +43,7 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 1. Fase 1, requisitos e brainstorm: `references/phase-1-requirements.md`.
 2. Fase 2, plano: `references/phase-2-planning.md`.
 3. Fase 3, execução, testes finais e gate: `references/phase-3-execution.md`.
-4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). As tasks leem esse arquivo e não carregam a skill.
+4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). Em seguida roda `ledger.py guard-rules --guard <feature_dir>/guard.md --domains <união dos domínios>`, que grava `guard-rules.json`. Fica fora a regra cujo alvo não existe nos arquivos do plano: regra de backend, SQL, webhook ou CORS em plano só de tela; regra de LLM em plano sem chamada de LLM; regra de migration em plano sem migration. As tasks leem esse arquivo e não carregam a skill.
 5. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
 
 Custo de contexto e modelo mais barato: `references/regras-globais.md`, seção 5.
@@ -73,7 +73,7 @@ Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md`, `references
 
 `subagent_type: "general-purpose"` e `run_in_background: true` em todos. Todo modelo acima do padrão vira decisão em `decisions.jsonl` com o motivo.
 
-Ao receber a notificação de cada agente, grave o custo: `devstate.py cost <dir> '{"agent_role": ..., "model": ..., "task": ..., "tokens": ..., "duration_ms": ...}'`.
+Ao receber a notificação de cada agente, grave o custo, uma linha por agente (nunca somada; `tokens` e `duration_ms` vêm da notificação do agente, inclusive no gate): `devstate.py cost <dir> '{"agent_role": ..., "model": ..., "task": ..., "tokens": ..., "duration_ms": ...}'`.
 
 ## 5. Arquivos
 

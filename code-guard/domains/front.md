@@ -5,7 +5,7 @@
 - [FRT] Fetch em effect tem cleanup (AbortController ou flag) e ignora resposta de recurso anterior. — origem: review-front/effect-fetch-sem-cleanup
 - [FRT] Dependência de effect é estável. Nunca função ou objeto inline em deps de effect que faz `setState`. — origem: review-front/loop-de-render
 - [FRT] Value de context é memoizado quando há muitos consumidores. — origem: review-front/context-recriado
-- [FRT] Requests independentes da rota de entrada vão em paralelo. — origem: review-front/waterfall
+- [FRT] Requests independentes vão em paralelo (`Promise.all`), na rota de entrada e no backend. — origem: review-front/waterfall
 - [FRT] Lib pesada (acima de ~100 KB gzip) entra por import dinâmico, fora do chunk inicial. — origem: review-front/bundle
 - [FRT] `setInterval`, listener e subscription têm cleanup no unmount. — origem: review-front/leak
 - [FRT] Mutation invalida ou atualiza o cache dos dados que ela altera. — origem: review-front/dado-velho
