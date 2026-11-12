@@ -11,6 +11,18 @@ Skills do Claude Code do Marcelo Cunha. Uma pasta por skill.
 
 O `install.sh` nunca apaga. Pasta existente em `~/.claude/skills/` vai para `~/.claude/skills-backup/<data>/` antes do symlink.
 
+### Dependências da /dev
+
+O `install.sh` instala cada uma pelo instalador oficial, só se ainda não existe. Pré-requisito: Node.js e a CLI `claude`.
+
+| Dependência | Para quê | Comando que o script roda |
+|---|---|---|
+| Impeccable | propostas de UI, task de UI, `detect` no gate | `npx impeccable install` |
+| Superpowers | `systematic-debugging` na investigação de bug | `claude plugin install superpowers@claude-plugins-official` |
+| agent-browser | QA e `review-ux` nas 3 telas | `npm i -g agent-browser` |
+
+Flags: `--sem-deps` pula as 3. `--sem-impeccable` pula só o Impeccable. Para atualizar o Impeccable: `npx impeccable update`.
+
 ## Skills
 
 | Skill | O que faz |
