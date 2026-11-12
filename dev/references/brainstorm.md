@@ -36,6 +36,7 @@ Território, não roteiro. Nunca leia os itens como perguntas.
 | Objetivo | o que é, por que agora, como o Marcelo sabe que deu certo |
 | Regras de negócio | cada regra com quem, quando, limite e exceção; conflito entre fontes resolvido |
 | Pontas soltas | estado vazio, erro, permissão, dado faltando ou sujo, legado, migração, concorrência, o que acontece com o que já existe |
+| Prioridade de tela | mobile, tablet ou desktop primeiro, decidido pelo Marcelo |
 | Propostas de UI | 2 a 4 opções por tela tocada, passadas pelo Impeccable, uma escolhida pelo Marcelo no navegador |
 | Referências | o que ele viu em outro lugar e gostou ou odiou |
 | Dado e medição | de onde vem cada número, como o Marcelo confere |
@@ -76,9 +77,17 @@ Toda opção de UI passa pelo Impeccable antes de ir ao navegador, com ou sem se
 
 1. Carregue a skill `impeccable`. Rode `impeccable context --target <rota ou arquivo>` uma vez por tela, com o cwd no repo.
 2. Monte o brief pelo `reference/shape.md`: 3 a 5 itens (job, modo da tela, estados, hierarquia, o que não muda). As perguntas do `shape` entram no brainstorm, sem rodada própria.
-3. Leia `reference/craft-floor.md` antes do mockup. Use só tokens e componentes do `DESIGN.md` (sem setup: os do código atual). Conteúdo real do domínio, sem lorem ipsum.
-4. Rode `impeccable detect <arquivo do mockup>` até zerar os achados.
-5. A opção escolhida e o brief dela entram na `spec.md`, na seção da tela.
+3. Feche com o Marcelo a prioridade de tela da feature: mobile, tablet ou desktop primeiro. Ela define o tamanho do mockup, a ordem do QA e o tamanho que a task de UI desenha primeiro.
+4. Escreva as 5 linhas de direção (adaptadas do unslop, `references/unslop.md`):
+   - Produto: o que faz e para quem, em 1 frase.
+   - Caráter: 2 a 3 palavras concretas. Proibido "clean", "moderno", "elegante", "minimalista", "premium".
+   - Mundo: o lugar ou material de onde o produto vem. Define o tom dos neutros, o acento e o visual.
+   - Momentos: os 1 ou 2 pontos onde a tela ganha cor e detalhe.
+   - Assinatura: 1 detalhe que só esse produto teria, usado sempre igual.
+   Produto com marca real mantém a marca e monta a direção em volta dela.
+5. Leia `reference/craft-floor.md` antes do mockup. Use só tokens e componentes do `DESIGN.md` (sem setup: os do código atual). Conteúdo real do domínio, sem lorem ipsum.
+6. Rode `impeccable detect <arquivo do mockup>` até zerar os achados.
+7. A opção escolhida, o brief, a prioridade de tela e a direção entram na `spec.md`, na seção da tela.
 
 ## 6. Spike
 

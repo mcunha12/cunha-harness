@@ -28,7 +28,7 @@ Procedimento completo em `references/brainstorm.md`: conversa, investigação, c
 2. Histórias e critérios de aceite.
 3. Regras de negócio, numeradas.
 4. Pontas soltas e a decisão de cada uma.
-5. Telas: job to be done, modo e o brief do Impeccable aprovado.
+5. Telas: prioridade de tela (mobile, tablet ou desktop primeiro), direção em 5 linhas, e por tela o job to be done, o modo e o brief do Impeccable aprovado.
 6. Dado e medição.
 7. Fora do escopo.
 8. Decisões do orquestrador, para o Marcelo conferir.

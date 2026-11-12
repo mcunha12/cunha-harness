@@ -9,7 +9,7 @@ Onde trabalhar: {{workdir}} (branch {{branch}}). Trabalhe só nele.
 Faça:
 1. Leia a seção da task no plano e os arquivos que ela cita.
 2. Leia `{{feature_dir}}/guard.md` e aplique as regras. Não carregue a skill `code-guard`.
-3. Task com UI em repo com Impeccable: siga `~/.claude/skills/dev/references/impeccable.md`, linha "Task com UI".
+3. Task com UI em repo com Impeccable: siga `~/.claude/skills/dev/references/impeccable.md`, linha "Task com UI". Task com UI em qualquer repo: siga `~/.claude/skills/dev/references/unslop.md` e a prioridade de tela da spec.
 4. Siga o `CLAUDE.md` do repo e o `~/.claude/CLAUDE.md`: comentário one-liner, nada de refatoração fora do escopo.
 5. Implemente o plano. Não escreva teste novo: os testes entram no fim da feature.
 6. Teste existente que quebra porque a spec muda aquele comportamento: ajuste só a asserção e liste o teste em `tests_adjusted`. Teste que quebra por outro motivo é defeito do código: corrija o código.
