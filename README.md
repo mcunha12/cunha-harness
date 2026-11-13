@@ -11,11 +11,24 @@ Skills do Claude Code do Marcelo Cunha. Uma pasta por skill.
 
 O `install.sh` nunca apaga. Pasta existente em `~/.claude/skills/` vai para `~/.claude/skills-backup/<data>/` antes do symlink.
 
+### Dependências da /dev
+
+O `install.sh` instala cada uma pelo instalador oficial, só se ainda não existe. Pré-requisito: Node.js e a CLI `claude`.
+
+| Dependência | Para quê | Comando que o script roda |
+|---|---|---|
+| Impeccable | propostas de UI, task de UI, `detect` no gate | `npx impeccable install` |
+| Superpowers | `systematic-debugging` na investigação de bug | `claude plugin install superpowers@claude-plugins-official` |
+| agent-browser | QA e `review-ux` nas 3 telas | `npm i -g agent-browser` |
+
+Flags: `--sem-deps` pula as 3. `--sem-impeccable` pula só o Impeccable. Para atualizar o Impeccable: `npx impeccable update`.
+
 ## Skills
 
 | Skill | O que faz |
 |---|---|
-| `dev` | Pipeline de desenvolvimento: requisitos, grafo de tasks, 4 workers, gates, pausa e retomada. |
+| `dev` | Pipeline de desenvolvimento: requisitos, um plano por feature, até 3 tasks em paralelo, testes e gate único com QA no fim (lean por padrão), Impeccable quando o repo tem setup, pausa e retomada. |
+| `retro` | Retro de uma feature do `/dev`, só quando chamada. |
 | `master-review` | Swarm de code review pós-código. Modos full e `--lean`, roast opcional. |
 | `code-guard` | A master-review como diretriz de escrita, usada durante a implementação. Aprende com erros repetidos. |
 | `review-*` | Especialistas da master-review, um tema cada. |

@@ -27,18 +27,11 @@ class DevstateTest(unittest.TestCase):
             self.assertEqual(json.load(f), {"a": 1})
         self.assertEqual([n for n in os.listdir(self.tmp) if n.endswith(".tmp")], [])
 
-    def test_step_done_marks_step_and_checkpoint(self):
-        s = devstate.step_started(self.state, "T3", 4, 1)
-        s = devstate.step_done(s, "T3", 4, "tasks/T3/plan.md")
-        self.assertIn(4, s["tasks"]["T3"]["steps_done"])
-        self.assertIsNone(s["tasks"]["T3"]["step_running"])
-        self.assertEqual(s["checkpoint"]["note"], "T3 passo 4 concluído")
-
-    def test_task_implemented_after_required_steps(self):
-        s = self.state
-        for step in (1, 2, 3, 5):
-            s = devstate.step_done(s, "T3", step, None, required=[1, 2, 3, 5])
-        self.assertEqual(s["tasks"]["T3"]["status"], "implemented")
+    def test_close_merges_repo_entry(self):
+        s = devstate.set_closing(self.state, "r", {"mr": "!1", "status": "watching"})
+        s = devstate.set_closing(s, "r", {"status": "cleaned"})
+        self.assertEqual(s["closing"]["r"]["mr"], "!1")
+        self.assertEqual(s["closing"]["r"]["status"], "cleaned")
 
     def test_pause_and_resume(self):
         self.state["phase"] = "execution"
@@ -76,30 +69,36 @@ class DevstateTest(unittest.TestCase):
         self.assertEqual(s["phase"], "execution")
         self.assertEqual(devstate.resume(devstate.pause(s, "stop"))["phase"], "execution")
 
-    def test_pause_clears_running_steps_and_workers(self):
+    def test_stop_returns_running_task_to_pending_via_cli(self):
+        devstate._save(self.tmp, devstate.set_phase(self.state, "execution"))
+        self.assertEqual(devstate.main(["devstate.py", "task-status", self.tmp, "T3", "running"]), 0)
+        self.assertEqual(devstate.main(["devstate.py", "pause", self.tmp, "stop"]), 0)
+        self.assertEqual(devstate.load(self.tmp)["tasks"]["T3"]["status"], "pending")
+
+    def test_redispatch_counts_attempts_via_cli(self):
+        devstate._save(self.tmp, self.state)
+        for _ in range(2):
+            devstate.main(["devstate.py", "task-status", self.tmp, "T3", "running"])
+        self.assertEqual(devstate.load(self.tmp)["tasks"]["T3"]["attempts"], 2)
+
+    def test_pause_reopens_final_tests_and_gate(self):
         self.state["phase"] = "execution"
-        s = devstate.step_started(self.state, "T3", 4, 1)
-        s = devstate.pause(s, "stop")
-        self.assertIsNone(s["tasks"]["T3"]["step_running"])
-        self.assertTrue(all(w["assignment"] is None for w in s["workers"]))
+        self.state["gates"] = {"G1": {"status": "testing", "report": None}}
+        self.assertEqual(devstate.pause(self.state, "stop")["gates"]["G1"]["status"], "pending")
+        self.state["gates"] = {"G1": {"status": "running", "report": None}}
+        self.assertEqual(devstate.pause(self.state, "stop")["gates"]["G1"]["status"], "tested")
 
-    def test_reset_steps_drops_steps_from_n_and_reopens_task(self):
-        s = self.state
-        for step in (1, 2, 3, 4, 5):
-            s = devstate.step_done(s, "T3", step, f"s{step}")
-        s = devstate.set_task_status(s, "T3", "done")
-        s = devstate.reset_steps(s, "T3", 2)
-        self.assertEqual(s["tasks"]["T3"]["steps_done"], [1])
-        self.assertEqual(s["tasks"]["T3"]["status"], "pending")
-        self.assertNotIn("2", s["tasks"]["T3"]["outputs"])
+    def test_baseline_failures_recorded(self):
+        s = devstate.set_baseline(self.state, ["src/test/a.test.ts > caso x", "src/test/b.test.ts"])
+        self.assertEqual(s["baseline_failures"], ["src/test/a.test.ts > caso x", "src/test/b.test.ts"])
+        self.assertIn("baseline", s["checkpoint"]["note"])
 
-    def test_stale_files(self):
-        with open(os.path.join(self.tmp, "a.txt"), "w") as f:
-            f.write("1")
-        hashes = devstate.hash_files(self.tmp, ["a.txt"])
-        with open(os.path.join(self.tmp, "a.txt"), "w") as f:
-            f.write("2")
-        self.assertEqual(devstate.stale_files(self.tmp, hashes), ["a.txt"])
+    def test_cost_refuses_aggregate_gate_line_and_duplicates(self):
+        ok = {"agent_role": "scan", "model": "haiku", "task": "gate", "tokens": 10, "duration_ms": 5}
+        self.assertIsNone(devstate.cost_error(self.tmp, ok))
+        self.assertIn("duration_ms", devstate.cost_error(self.tmp, dict(ok, duration_ms=0)))
+        devstate.append_jsonl(os.path.join(self.tmp, "costs.jsonl"), ok)
+        self.assertIn("idêntica", devstate.cost_error(self.tmp, ok))
 
 
 if __name__ == "__main__":

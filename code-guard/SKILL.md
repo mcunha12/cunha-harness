@@ -30,7 +30,13 @@ Carregue nesta ordem e aplique tudo junto:
 | `ia` | SDK de LLM, arquivos de prompt, MCP |
 | `modularidade`, `arquitetura` | arquivo ou módulo novo, import novo entre módulos, dependência nova, padrão novo, mais de ~10 arquivos |
 
-Registre os domínios carregados. O /dev passa essa lista ao ledger (`--loaded-domains`).
+Registre os domínios carregados. Com feature do /dev, grave a lista de regras carregadas logo depois de gerar o `guard.md`:
+
+```bash
+python3 ~/.claude/skills/code-guard/scripts/ledger.py guard-rules --guard <feature_dir>/guard.md --domains <domínios carregados, separados por vírgula>
+```
+
+O comando grava `<feature_dir>/guard-rules.json` (domínios e uma identidade `PREFIXO|origem|hash` por regra). O `ledger.py append --feature-dir <feature_dir>` lê os domínios dali. Fora do /dev, passe `--loaded-domains`.
 
 ## 2. Prioridade em conflito
 
@@ -44,7 +50,7 @@ Regra aprendida com a mesma origem (`review-x/categoria`) de uma regra do núcle
    `python3 ~/.claude/skills/code-guard/scripts/diff_checks.py run --repo . --base <branch base> --uncommitted`
 1. Type-check, lint e testes só dos arquivos tocados e dos consumidores diretos, via trava de processo pesado e com workers limitados:
    `~/.claude/skills/dev/scripts/heavy_lock.sh npx vitest run <arquivos> --maxWorkers=2`
-2. Tela alterada: siga o fluxo real de cliques em iPhone SE e depois desktop, e olhe os prints:
+2. Tela alterada: siga o fluxo real de cliques nas três telas, iPhone SE (375×667), depois tablet (768×1024) e depois desktop (1280×720), e olhe os prints:
    `python3 ~/.claude/skills/master-review/scripts/mobile_flow.py --url <url> --out <dir> --device iphone-se --steps <steps.json>`
    O Chrome headless não abre janela com menos de 500 px. Print de `--window-size=375` sai cortado. Use sempre o `mobile_flow.py`.
 3. Mudança de comportamento: a /test-audit (Mode A) vem antes do código.
@@ -56,6 +62,8 @@ A master-review grava todo BLOCKER e MAJOR confirmado em `~/.claude/code-guard/l
 ```bash
 python3 ~/.claude/skills/code-guard/scripts/ledger.py triggers
 ```
+
+Regra que nunca disparou na feature: `ledger.py unused --feature <feature>` cruza `guard-rules.json` com as origens dos achados do ledger. A regra sem origem `review-x/categoria` (regras globais do CLAUDE.md) não aparece nos achados e sai da conta.
 
 Para cada trigger (mesma identidade `especialista:categoria`, 3 ocorrências, 2 tasks ou mais), suba na hierarquia de imposição. Use o primeiro nível que pega o erro:
 

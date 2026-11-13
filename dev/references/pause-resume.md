@@ -3,25 +3,16 @@
 ## /dev stop
 
 1. Leia `state.json` da feature ativa.
-2. Para cada worker ocupado:
-   - passo 1, 2, 3, review ou gate (só leem): pare o agente (TaskStop). O passo recomeça na retomada.
-   - passo 4 ou 5 (editam código): pare o agente e, na worktree da task, `git add -u` e `git add -- <arquivos novos listados no plan.md da task>`, depois `git commit -m "wip: <task> passo <n>"`. Nunca `git add -A`: prints, `.env` e relatórios não rastreados ficam fora do commit. Depois `git worktree remove <worktree>`. A branch da task fica.
-3. `devstate.py worker <dir> <slot> null` para cada slot e `devstate.py pause <dir> "<motivo>"`.
-4. Diga ao Marcelo onde a feature parou (o `checkpoint` do estado) e o comando para retomar.
-
-A branch da feature só recebe task revisada. Parar no meio nunca a quebra.
+2. Pare cada agente rodando (TaskStop).
+   - Plano, gate: só leem. Recomeçam na retomada.
+   - Task ou testes finais: no lugar onde rodavam (branch da feature ou worktree), `git add -u` e `git add -- <arquivos novos da task ou testes novos>`, depois `git commit -m "wip: <task ou tests>"`. Nunca `git add -A`. Com worktree, `git worktree remove`; a branch da task fica.
+3. `devstate.py pause <dir> "<motivo>"`. O `pause` devolve task `running` a `pending`, gate `testing` a `pending` e gate `running` a `tested`.
+4. Diga ao Marcelo onde a feature parou (o `checkpoint`) e o comando para retomar.
 
 ## /dev resume <feature> [instrução]
 
-0. Com instrução em linguagem natural ("tira o T7", "junta T2 e T3", "gate depois do T5"):
-   1. altere o `plan.json`;
-   2. `devgraph.py validate plan.json` até voltar `[]`;
-   3. `devgraph.py analyze plan.json`;
-   4. mostre a diferença (tasks, dependências, gates, caminho crítico);
-   5. task `done` que a mudança toca volta a partir do passo 3: `devstate.py reset-steps <dir> <task> 3`; task com commit `wip:` que a mudança toca: o Opus decide se aproveita o diff;
-   6. registre a mudança em `decisions.jsonl` com `origin: "resposta"`.
-1. Base andou (`git fetch` e `git merge-base` diferente do registrado): faça merge da base na branch da feature em cada repo e rode de novo os testes das tasks `done`, via `heavy_lock.sh`. Conflito ou teste vermelho: pare e mostre ao Marcelo.
-2. Leitura velha: para cada task com `reading.md`, `devstate.py stale <repo> <hashes>`; arquivo na lista → `devstate.py reset-steps <dir> <task> 2`.
-3. Commit `wip:`: o Opus lê o diff e decide continuar daquele código ou descartar (`git reset --hard` na branch da task para o commit anterior ao `wip:`, só nessa branch).
-4. Recrie as worktrees das tasks em andamento.
-5. `devstate.py resume <dir>` e volte ao loop do orquestrador.
+0. Feature pausada antes de 09/11/2026 (sem `plan.md`): rode a Fase 2, passo 4, de novo. O plano novo mantém as tasks `done` e planeja só o que falta.
+1. Com instrução ("tira o T7", "junta T2 e T3"): altere o `plan.json` e o `plan.md` da task tocada, confira as regras da Fase 2 (passo 5), mostre a diferença e registre a decisão com `origin: "resposta"`. Task `done` que a mudança toca volta a `pending`.
+2. Base andou (`git merge-base --is-ancestor <base> feat/<slug>` falha): junte a base na branch da feature em cada repo e rode o type-check e os testes da área, via `heavy_lock.sh`. Conflito ou teste vermelho: pare e mostre ao Marcelo.
+3. Commit `wip:`: leia o diff e decida continuar daquele código ou descartar (`git reset --hard` para o commit anterior ao `wip:`, só na branch onde ele está). A task redisparada recebe o diff aproveitado no prompt.
+4. `devstate.py resume <dir>` e volte ao loop da Fase 3.

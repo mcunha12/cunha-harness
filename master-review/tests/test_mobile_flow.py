@@ -54,9 +54,16 @@ class MobileFlowTest(unittest.TestCase):
         self.assertFalse(report["steps"][0]["ok"])
         self.assertTrue(report["steps"][1]["ok"])
 
+    def test_tablet_viewport_and_no_overflow(self):
+        report = run_flow(self.out, "--device", "tablet")
+        self.assertEqual(report["viewport"], {"width": 768, "height": 1024, "dpr": 2})
+        self.assertEqual(report["scroll_width"], 768)
+        self.assertEqual(png_size(os.path.join(self.out, "inicial.png")), (1536, 2048))
+
     def test_desktop(self):
         report = run_flow(self.out, "--device", "desktop")
-        self.assertEqual(report["viewport"]["width"], 1440)
+        self.assertEqual(report["viewport"]["width"], 1280)
+        self.assertEqual(report["viewport"]["height"], 720)
 
 
 if __name__ == "__main__":

@@ -74,6 +74,23 @@ class LedgerTest(unittest.TestCase):
             self.append([finding("MAJOR", "confirmado")], task)
         self.assertTrue(self.triggers()[0]["escalate"])
 
+    def test_guard_rules_feed_loaded_domains_and_unused(self):
+        fdir = tempfile.mkdtemp()
+        guard = os.path.join(fdir, "guard.md")
+        with open(guard, "w") as f:
+            f.write("# Front\n- [A11Y] Modal prende o foco. \u2014 origem: review-a11y/Foco-Modal\n"
+                    "- [A11Y] Contraste 4.5:1. \u2014 origem: review-a11y/contraste\n")
+        out = json.loads(self.run_ledger("guard-rules", "--guard", guard, "--domains", "a11y,ux"))
+        self.assertEqual(out["rules"], 2)
+        path = os.path.join(self.home, "f.json")
+        with open(path, "w") as f:
+            json.dump([finding("MAJOR", "confirmado", category="foco-modal", agent="review-a11y")], f)
+        self.run_ledger("append", "--findings", path, "--repo", "r", "--feature", "x", "--task", "gate",
+                        "--feature-dir", fdir)
+        self.assertTrue(self.lines()[0]["domain_loaded"])
+        result = json.loads(self.run_ledger("unused", "--feature", "x", "--feature-dir", fdir))
+        self.assertEqual([r["origin"] for r in result["never_fired"]], ["review-a11y/contraste"])
+
     def test_corrupted_line_is_skipped(self):
         self.append([finding("MAJOR", "confirmado")], "T1")
         with open(os.path.join(self.home, "ledger.jsonl"), "a") as f:

@@ -1,67 +1,39 @@
 # Fase 2 — Plano da feature
 
-Roda quando a feature começa: `devstate.py phase <dir> planning`. A camada de código envelhece, então nunca roda antes.
+Roda quando a feature começa: `devstate.py phase <dir> planning`. Nunca roda antes: o código envelhece.
 
-## 1. Revalidação
+1. Revalidação. Cruze os arquivos que as features anteriores alteraram (`git diff --name-only` das branches delas) com o mapeamento desta feature. Com interseção, as decisões da spec que dependem desses arquivos voltam ao Marcelo.
+2. Branches. Crie `feat/<slug>` em cada repo a partir da base e registre em `state.json`.
+3. Baseline de falhas. Rode uma vez, na base, os testes da área que a feature toca (via `heavy_lock.sh`, workers limitados). Grave os que já falham: `devstate.py baseline <dir> '<json-list>'`. Task, testes finais e gate não reinvestigam essas falhas.
+4. Plano. Dispare 1 agente Opus `high` com `prompts/plan-feature.md`. Ele lê o código uma vez e grava `plan.json`, `plan.md` e o `steps.json` de cada task com UI. O baseline e o plano podem rodar na mesma mensagem.
+5. Conferência. Leia o `plan.json`:
+   - toda task toca um repo só;
+   - `depends_on` cita só tasks anteriores na lista;
+   - toda task com `has_ui` tem `tasks/<id>/steps.json`.
 
-Cruze os arquivos que as features anteriores alteraram (`git diff --name-only` das branches delas) com o recon desta feature. Interseção: as decisões da spec que dependem desses arquivos voltam ao Marcelo. Sem interseção, siga.
+   Erro: devolva ao mesmo agente (SendMessage) com a lista do que corrigir.
+6. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação. Ao Marcelo vai 1 linha: número de tasks, repos e o tipo de gate (lean ou full).
 
-## 2. Quebra em tasks
+## Notas do plano
 
-Campos de cada task: `references/state-layout.md` (plan.json). Uma task toca um repo só.
+O plano escolhe o modelo de cada task e os overrides da review. O risco escolhe o tipo de gate.
 
-Complexidade:
+| Nota | Complexidade | Risco |
+|---|---|---|
+| 1 | 1 arquivo, mudança local | copy, estilo, sem lógica |
+| 2 | 2 a 3 arquivos no mesmo módulo | UI com lógica local |
+| 3 | 4 a 8 arquivos ou 2 módulos | regra de negócio coberta por teste existente |
+| 4 | 9 a 15 arquivos, 3+ módulos ou lógica nova não trivial | contrato entre serviços, autenticação, dinheiro, dado de usuário |
+| 5 | mais de 15 arquivos ou mudança transversal | migration de schema, dado irreversível, segurança |
 
-| Nota | Critério |
-|---|---|
-| 1 | 1 arquivo, mudança local |
-| 2 | 2 a 3 arquivos no mesmo módulo |
-| 3 | 4 a 8 arquivos ou 2 módulos |
-| 4 | 9 a 15 arquivos, 3+ módulos ou lógica nova não trivial |
-| 5 | mais de 15 arquivos ou mudança transversal |
+Modelo da task (tabela da SKILL.md, seção 4):
 
-Risco:
+- Lógica: `haiku` `medium`. `sonnet` `medium` com complexidade 4 ou 5, lógica nova não trivial ou 5 ou mais regras de negócio.
+- UI: `sonnet` `medium`. `sonnet` `high` ou `opus` `medium` com tela nova, estado de tela complexo ou animação.
+- Task com lógica e UI conta como UI.
 
-| Nota | Critério |
-|---|---|
-| 1 | copy, estilo, sem lógica |
-| 2 | UI com lógica local |
-| 3 | regra de negócio coberta por teste existente |
-| 4 | contrato entre serviços, autenticação, dinheiro, dado de usuário |
-| 5 | migration de schema, dado irreversível, segurança |
+Review:
 
-Risco 4 ou 5 = risco alto: review lean sozinha e com roast. Risco 1 a 3 vai para a branch da feature sem review lean; o gate revisa.
-
-Esforço do Opus (passos 1 e 3): `opus_effort` é `medium` por padrão. Marque `xhigh` quando a task tem complexidade 4 ou 5, ou 5 ou mais regras de negócio no `done_when` e na spec da task. Na dúvida, pergunte ao Marcelo antes de publicar o plano, com a task e o motivo. Toda task em `xhigh` vira decisão em `decisions.jsonl`, com o motivo.
-
-## 3. Gates
-
-1. Sempre há um gate final, depois da última task.
-2. Gate depois do conjunto de tasks que congela um contrato (API, schema, evento, tipo compartilhado) consumido por task de outro cluster ou repo.
-3. No máximo 6 tasks entre dois gates.
-4. O gate entra no fechamento de cluster sempre que isso não contraria as regras 2 e 3.
-5. Feature com vários repos: o gate roda uma /master-review full por repo, com os outros repos em `related_repos`.
-
-O gate passa quando a review full termina sem BLOCKER e sem MAJOR depois da correção.
-
-## 4. Validar e analisar
-
-```bash
-python3 ~/.claude/skills/dev/scripts/devgraph.py validate <dir>/plan.json
-python3 ~/.claude/skills/dev/scripts/devgraph.py analyze <dir>/plan.json
-```
-
-Erro de validação: refaça a quebra. Ciclo que persiste depois de uma refeita: leve ao Marcelo.
-
-O `analyze` grava custos, caminho à frente, caminho crítico e clusters (MST sobre a distância de Jaccard dos `files_hint`, corte em 0,8, até 4 tasks por cluster).
-
-## 5. Publicar
-
-Crie as branches da feature (`feat/<slug>`) em cada repo a partir da base, registre em `state.json` e gere o tracker. Suba o servidor do tracker, se ele ainda não estiver no ar, e imprima o link:
-
-```bash
-curl -sf http://localhost:4777/health >/dev/null || (nohup python3 ~/.claude/skills/dev/scripts/tracker_server.py >/dev/null 2>&1 &)
-echo "http://localhost:4777/f/<slug>"
-```
-
-A página aberta pelo localhost se atualiza sozinha a cada checkpoint, sem recarregar e sem perder a rolagem. Aberta como arquivo, ela recarrega a cada 10 s. `devstate.py phase <dir> execution`. A execução começa sem esperar aprovação.
+- Alguma task com risco 4 ou 5: o gate é a `master-review` full. Senão, `--lean`.
+- Tema crítico ou de alta complexidade: o plano grava o override daquele tema (`high` ou `xhigh`) com o motivo. Exemplo: migration irreversível → `migrations:xhigh`; mudança de autorização → `seguranca:high`.
+- Scan da review: `low` só em diff pequeno sem tema crítico; senão `medium`.
