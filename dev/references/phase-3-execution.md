@@ -19,7 +19,7 @@ enquanto houver task pending ou running:
    - só esta task rodando no repo: a task roda na branch da feature, sem worktree;
    - 2 ou mais tasks no mesmo repo ao mesmo tempo: `git worktree add <repo>/.worktrees/<task> -b dev/<slug>/<task> feat/<slug>`. Sem mudança de `package.json`, `ln -s <repo>/node_modules <worktree>/node_modules`. Em monorepo com workspace local, siga o `CLAUDE.md` do repo.
 3. Dispare o agente com `prompts/task.md`. Modelo: os campos `model` e `effort` da task no `plan.json`.
-4. `implemented`: com worktree, merge de `dev/<slug>/<task>` na branch da feature e `git worktree remove`. Depois `task-status done`.
+4. `implemented`: com worktree, merge de `dev/<slug>/<task>` na branch da feature, `git worktree remove` e `git branch -d dev/<slug>/<task>`. Depois `task-status done`. Task `blocked` com worktree: a worktree fica até a Fase 4.
 5. Falha:
    - 1ª falha: redisparo um degrau acima, com o erro no prompt. Degraus: `haiku` `medium` → `sonnet` `medium` → `sonnet` `high` → `opus` `medium`. Registre a decisão.
    - 2ª falha: `devstate.py task-status <dir> <task> blocked "<motivo>"`. Avise o Marcelo. As outras tasks seguem.
@@ -45,5 +45,7 @@ Rodam quando todas as tasks estão `done`.
 
 ## 5. Fim da feature
 
-1. Mostre o resumo e peça confirmação para push da branch e abertura de 1 MR por repo. Cada MR cita os outros e a ordem de deploy (quem fornece o contrato sobe primeiro).
-2. `devstate.py phase <dir> done`. A próxima feature da fila começa sem esperar a confirmação.
+1. Crie as issues das pendências (`references/phase-4-closing.md`, seção 1).
+2. Mostre o resumo e peça confirmação para push da branch e abertura de 1 MR por repo. Cada MR cita os outros, a ordem de deploy (quem fornece o contrato sobe primeiro) e a seção `## Pendências` com as issues.
+3. `devstate.py phase <dir> done`. A próxima feature da fila começa sem esperar a confirmação.
+4. Aberto o MR, a Fase 4 roda em background: scout, prova de deploy e limpeza (`references/phase-4-closing.md`).
