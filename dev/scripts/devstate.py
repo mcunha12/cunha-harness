@@ -88,6 +88,14 @@ def set_phase(state, phase):
     return _checkpoint(s, f"fase: {phase}")
 
 
+def set_closing(state, repo, info):
+    s = copy.deepcopy(state)
+    entry = s.setdefault("closing", {}).setdefault(repo, {})
+    entry.update(info)
+    entry["at"] = _now()
+    return _checkpoint(s, f"fechamento {repo}: {entry.get('status')}")
+
+
 REOPEN_ON_PAUSE = {"testing": "pending", "running": "tested"}
 
 
@@ -155,6 +163,7 @@ USAGE = """uso: devstate.py <op> <feature_dir> ...
   phase <dir> <requirements|planning|execution|done>
   pause <dir> <reason> | resume <dir>
   wait <dir> <dep_feature_dir> | ready <dir>  (exit 0 = pode começar)
+  close <dir> <repo> <json>  (fechamento: mr, issues, status)
   baseline <dir> <json-list>  (testes que já falham na base)
   decision <dir> <json> | cost <dir> <json>"""
 
@@ -185,6 +194,8 @@ def main(argv):
         state = set_task_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
     elif op == "gate-status":
         state = set_gate_status(state, args[0], args[1], args[2] if len(args) > 2 else None)
+    elif op == "close":
+        state = set_closing(state, args[0], json.loads(args[1]))
     elif op == "phase":
         state = set_phase(state, args[0])
     elif op == "pause":

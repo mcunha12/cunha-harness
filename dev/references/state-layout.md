@@ -24,6 +24,7 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 {
   "feature": "lembrete-aula",
   "gate": "lean",
+  "deploy_check": {"api-bff": "curl -s https://…/health | grep <sha>"},
   "review": {"scan_effort": "medium",
              "overrides": {"migrations": {"effort": "xhigh", "motivo": "migration apaga coluna"}}},
   "tasks": [
@@ -40,6 +41,7 @@ Escrita sempre atômica (arquivo temporário + rename), pelo `devstate.py`.
 - `model` e `effort`: regras de `phase-2-planning.md`, "Notas do plano".
 - `review.overrides`: vira `--overrides tema:esforço` no gate.
 - `changes_behavior`: a task entra nos testes finais.
+- `deploy_check`: `{"<repo>": "<comando ou consulta>"}`, no topo do `plan.json`. O comando ou consulta que prova a versão em produção. Usado na Fase 4.
 
 ## state.json
 
@@ -84,6 +86,7 @@ devstate.py gate-status <dir> <gate> <pending|testing|tested|running|passed|bloc
 devstate.py phase <dir> <requirements|planning|execution|done>
 devstate.py pause <dir> <motivo> | resume <dir>
 devstate.py wait <dir> <dir da feature esperada> | ready <dir>
+devstate.py close <dir> <repo> '{"mr": "12", "head_sha": "…", "issues": ["#3"], "status": "watching | closed | ci_failed | deploy_pending | cleaned"}'
 devstate.py baseline <dir> '<json-list>'
 devstate.py decision <dir> '<json>' | cost <dir> '<json>'
 ```

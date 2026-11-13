@@ -27,6 +27,12 @@ class DevstateTest(unittest.TestCase):
             self.assertEqual(json.load(f), {"a": 1})
         self.assertEqual([n for n in os.listdir(self.tmp) if n.endswith(".tmp")], [])
 
+    def test_close_merges_repo_entry(self):
+        s = devstate.set_closing(self.state, "r", {"mr": "!1", "status": "watching"})
+        s = devstate.set_closing(s, "r", {"status": "cleaned"})
+        self.assertEqual(s["closing"]["r"]["mr"], "!1")
+        self.assertEqual(s["closing"]["r"]["status"], "cleaned")
+
     def test_pause_and_resume(self):
         self.state["phase"] = "execution"
         s = devstate.pause(self.state, "stop")

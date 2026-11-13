@@ -1,6 +1,6 @@
 ---
 name: dev
-description: Pipeline de desenvolvimento ponta a ponta, do pedido ao MR, com estado salvo para pausar e retomar. Use com /dev <pedido>, /dev, /dev stop, /dev resume <feature> [instrução], ou quando o Marcelo pedir para desenvolver uma feature a partir de um prompt, link do Jira, link do Notion ou arquivo.
+description: Pipeline de desenvolvimento ponta a ponta, do pedido ao MR e à limpeza depois do deploy, com estado salvo para pausar e retomar. Use com /dev <pedido>, /dev, /dev stop, /dev resume <feature> [instrução], ou quando o Marcelo pedir para desenvolver uma feature a partir de um prompt, link do Jira, link do Notion ou arquivo.
 argument-hint: "[<pedido> | stop | resume <feature> [instrução]]"
 model: opus
 effort: medium
@@ -37,14 +37,17 @@ A retro saiu do /dev (09/11/2026). O Marcelo chama a skill `/retro <feature>` qu
 12. Testes só no fim da feature, com veredito "Behavior" na tabela da /test-audit. No /dev, esta regra substitui o Mode A da /test-audit e o item da code-guard que pede testes antes do código.
 13. Impeccable: repo com `PRODUCT.md` ou `DESIGN.md` na raiz tem setup. Com setup, plano, task de UI e gate usam os recursos dele (`references/impeccable.md`). Sem setup, o /dev segue sem ele e avisa o Marcelo em 1 linha que `/impeccable init` cria o setup. O /dev nunca roda o `init`. Exceção: toda proposta de UI do brainstorm passa pelo Impeccable, com ou sem setup.
 14. Brainstorm: todo `/dev <pedido>` passa pelo `references/brainstorm.md` na Fase 1 (cópia adaptada da `superpowers:brainstorming`; não carregue a skill da superpowers) para fechar regras de negócio, pontas soltas e propostas de UI. Nenhuma feature entra na Fase 2 sem a `spec.md` aprovada pelo Marcelo.
+15. Toda pendência vira issue no GitHub ou GitLab, citada na seção `## Pendências` do MR. Nenhuma pendência fica só em relatório ou conversa.
+16. Todo MR aberto ganha um scout em background. Depois do merge com CI verde e deploy provado, a feature some do disco: worktrees, branches locais e branch remota (`references/phase-4-closing.md`).
 
 ## 3. Fluxo
 
 1. Fase 1, requisitos e brainstorm: `references/phase-1-requirements.md`.
 2. Fase 2, plano: `references/phase-2-planning.md`.
 3. Fase 3, execução, testes finais e gate: `references/phase-3-execution.md`.
-4. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). Em seguida roda `ledger.py guard-rules --guard <feature_dir>/guard.md --domains <união dos domínios>`, que grava `guard-rules.json`. Fica fora a regra cujo alvo não existe nos arquivos do plano: regra de backend, SQL, webhook ou CORS em plano só de tela; regra de LLM em plano sem chamada de LLM; regra de migration em plano sem migration. As tasks leem esse arquivo e não carregam a skill.
-5. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
+4. Fase 4, fechamento: issues das pendências, scout do MR, prova de deploy e limpeza: `references/phase-4-closing.md`.
+5. Antes da primeira task, um agente carrega a skill `code-guard` com a união dos domínios do plano, mais overlay e regras aprendidas, e grava `<feature_dir>/guard.md` só com as regras (sem explicação). Em seguida roda `ledger.py guard-rules --guard <feature_dir>/guard.md --domains <união dos domínios>`, que grava `guard-rules.json`. Fica fora a regra cujo alvo não existe nos arquivos do plano: regra de backend, SQL, webhook ou CORS em plano só de tela; regra de LLM em plano sem chamada de LLM; regra de migration em plano sem migration. As tasks leem esse arquivo e não carregam a skill.
+6. O orquestrador lê só o JSON que cada agente devolve. Não abre arquivo de código nem log inteiro.
 
 Custo de contexto e modelo mais barato: `references/regras-globais.md`, seção 5.
 
@@ -69,6 +72,7 @@ Esta tabela vale sobre o modelo da sessão, o `~/.claude/CLAUDE.md`, `references
 | Task de UI, `prompts/task.md` | `sonnet`, `medium` | `opus`, `low` |
 | Resumo da code-guard (Fase 3, antes da 1ª task) | `haiku`, `low` | não muda |
 | Testes finais, 1 por repo, `prompts/final-tests.md` | `haiku`, `medium` | `sonnet`, `medium` |
+| Prova de deploy (Fase 4) | `haiku`, `low` | não muda |
 | Gate final | Skill `master-review` com a tabela de modelos dela: `--lean` por padrão, full quando alguma task tem risco 4 ou 5, `--overrides` do plano | o plano grava os overrides por tema |
 
 `subagent_type: "general-purpose"` e `run_in_background: true` em todos. Todo modelo acima do padrão vira decisão em `decisions.jsonl` com o motivo.
@@ -89,3 +93,6 @@ Ao receber a notificação de cada agente, grave o custo, uma linha por agente (
 | `scripts/devstate.py` | estado atômico, checkpoints, fila, decisões e custos |
 | `scripts/fixture_pii.py` | barra dado pessoal em teste e fixture |
 | `scripts/heavy_lock.sh` | trava global de processo pesado |
+| `references/phase-4-closing.md` | issues, scout, prova de deploy e limpeza |
+| `scripts/mr_scout.sh` | vigia MR/PR até merge com CI verde |
+| `scripts/cleanup.sh` | apaga worktrees e branches da feature mergeada |
